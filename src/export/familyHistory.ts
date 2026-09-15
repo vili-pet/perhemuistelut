@@ -1,4 +1,5 @@
 import { getQuestionById } from '../data/questions.ts'
+import { respondentNamesWithYears } from '../data/participants.ts'
 import {
   answerHasContent,
   EMPTY_TRANSCRIPT_PLACEHOLDER,
@@ -16,19 +17,23 @@ export function toFamilyHistoryExport(session: InterviewSession): FamilyHistoryE
       updatedAt: session.updatedAt,
       interviewer: session.interviewer,
       respondents: session.respondents,
+      continuousRecording: true,
+      audio: session.recordings,
+      topicTimestamps: session.topicTimestamps,
       questions: session.answers.map((answer) => {
         const definition = getQuestionById(answer.questionId)
         return {
           id: answer.questionId,
           theme: answer.theme,
+          themeId: definition?.themeId ?? 'lapsuus',
+          label: definition?.label ?? answer.theme,
           question: answer.question,
-          prompts: definition?.prompts ?? [],
           followUps: definition?.followUps ?? [],
           recordedAt: {
             startedAt: answer.startedAt,
             endedAt: answer.endedAt,
+            cueOffsetMs: answer.cueOffsetMs,
           },
-          audio: answer.recordings,
           transcript: {
             text: answer.transcript,
             placeholder: answer.transcript === EMPTY_TRANSCRIPT_PLACEHOLDER || answer.transcript.trim() === '',
@@ -57,7 +62,8 @@ export function downloadJson(filename: string, data: unknown): void {
 }
 
 export function respondentSlug(session: InterviewSession): string {
-  return session.respondents[0]?.id ?? 'haastattelu'
+  const ids = session.respondents.map((person) => person.id)
+  return ids.length > 0 ? ids.join('-') : 'haastattelu'
 }
 
 export function exportFileName(session: InterviewSession): string {
@@ -71,16 +77,27 @@ export function storiesFileName(session: InterviewSession): string {
 }
 
 export function toStoriesText(session: InterviewSession): string {
-  const who = session.respondents.map((person) =>
-    person.birthYear ? `${person.name} (s. ${person.birthYear})` : person.name,
-  )
   const lines = [
-    'Perhemuistelut',
-    `Haastateltava: ${who.join(', ')}`,
+    'Perhemuistelot',
+    `Haastateltavat: ${respondentNamesWithYears(session.respondents)}`,
     `Haastattelija: ${session.interviewer.name}`,
     `Päivitetty: ${session.updatedAt}`,
     '',
   ]
+
+  if (session.recordings.length > 0) {
+    lines.push(`Nauhoja: ${session.recordings.length}`)
+    lines.push('')
+  }
+
+  if (session.topicTimestamps.length > 0) {
+    lines.push('Aihemerkit:')
+    for (const stamp of session.topicTimestamps) {
+      const seconds = Math.max(0, Math.round(stamp.offsetMs / 1000))
+      lines.push(`- ${seconds}s · nauha ${stamp.tapeIndex + 1} · ${stamp.questionId}`)
+    }
+    lines.push('')
+  }
 
   for (const [index, answer] of session.answers.entries()) {
     if (!answerHasContent(answer)) continue

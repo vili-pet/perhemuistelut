@@ -7,6 +7,20 @@ export type RespondentId = (typeof RESPONDENT_IDS)[number]
 export const SPEAKER_ROLES = ['interviewer', 'respondent', 'unknown'] as const
 export type SpeakerRole = (typeof SPEAKER_ROLES)[number]
 
+export const THEME_IDS = [
+  'lapsuus',
+  'koti',
+  'perheperinteet',
+  'tyo',
+  'rakkaus',
+  'vaikeat-ajat',
+  'paikat',
+  'teknologia',
+  'neuvo',
+  'viesti',
+] as const
+export type ThemeId = (typeof THEME_IDS)[number]
+
 export interface Person {
   id: SpeakerId
   name: string
@@ -17,9 +31,9 @@ export interface Person {
 export interface InterviewQuestion {
   id: string
   theme: string
-  themeId: string
+  themeId: ThemeId
+  label: string
   question: string
-  prompts: string[]
   followUps: string[]
 }
 
@@ -42,16 +56,34 @@ export interface AudioRecordingMeta {
   fileName?: string
 }
 
+export interface TopicTimestamp {
+  id: string
+  questionId: string
+  questionIndex: number
+  offsetMs: number
+  at: string
+  tapeIndex: number
+}
+
+export interface QuestionMark {
+  interesting: boolean
+  returnLater: boolean
+  note: string
+  updatedAt?: string
+  pokeSentAt?: string
+}
+
 export interface QuestionAnswer {
   questionId: string
   question: string
   theme: string
   startedAt?: string
   endedAt?: string
-  recordings: AudioRecordingMeta[]
+  cueOffsetMs?: number
   transcript: string
   notes: string
   segments: SpeakerSegment[]
+  mark: QuestionMark
 }
 
 export interface InterviewSession {
@@ -62,6 +94,8 @@ export interface InterviewSession {
   interviewer: Person
   respondents: Person[]
   currentQuestionIndex: number
+  topicTimestamps: TopicTimestamp[]
+  recordings: AudioRecordingMeta[]
   answers: QuestionAnswer[]
 }
 
@@ -74,23 +108,28 @@ export interface FamilyHistoryExport {
     updatedAt: string
     interviewer: Person
     respondents: Person[]
+    continuousRecording: true
+    audio: AudioRecordingMeta[]
+    topicTimestamps: TopicTimestamp[]
     questions: Array<{
       id: string
       theme: string
+      themeId: ThemeId
+      label: string
       question: string
-      prompts: string[]
       followUps: string[]
       recordedAt: {
         startedAt?: string
         endedAt?: string
+        cueOffsetMs?: number
       }
-      audio: AudioRecordingMeta[]
       transcript: {
         text: string
         placeholder: boolean
         segments: SpeakerSegment[]
       }
       notes: string
+      mark: QuestionMark
     }>
   }
 }

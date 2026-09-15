@@ -1,174 +1,150 @@
-import type { InterviewQuestion } from '../types.ts'
+import type { InterviewQuestion, ThemeId } from '../types.ts'
+
+export const REQUIRED_THEMES: ThemeId[] = [
+  'lapsuus',
+  'koti',
+  'perheperinteet',
+  'tyo',
+  'rakkaus',
+  'vaikeat-ajat',
+  'paikat',
+  'teknologia',
+  'neuvo',
+  'viesti',
+]
+
+export const EXACT_PROMPTS = [
+  'Mikä oli teidän perheen eka telkkari, ja milloin se vaihtu mustavalkosesta väriin?',
+  'Mikä oli teidän eka oma auto, ja mihin sillä tehtiin se kovin reissu?',
+  'Muistatteko missä olitte ku ihminen laskeutu kuuhun 1969?',
+  'Mitä musaa c-kasetilta tai vinyyliltä luukutettiin teininä 70-luvun alussa?',
+  'Millainen oli teidän eka kesäduuni ja paljonko siitä maksettiin markkoja?',
+  'Miten ja missä työ tapasitte toisenne ekaa kertaa?',
+  'Mikä oli lapsuuden lempisafka mitä mutsi teki ja mitä ei enää nykyään syödä?',
+  'Oliko teillä nuorena joku vakkari kylänraitti missä aina hengattiin viikonloppusin?',
+  'Mikä 70- tai 80-luvun vaate tai tukkatyyli naurattaa nykyään eniten vanhoissa kuvissa?',
+  'Jos saisitte elää yhen viikonlopun uusiks nuoruudesta, mikä se ois?',
+] as const
 
 export const QUESTIONS: InterviewQuestion[] = [
   {
-    id: 'lapsuus',
-    themeId: 'lapsuus',
-    theme: 'Lapsuus',
-    question:
-      'Miltä lapsuutenne näytti? Mitä muistatte ensimmäisistä vuosistanne — leikeistä, koulusta ja siitä, miltä maailma silloin tuntui?',
-    prompts: [
-      'Missä asuitte pienenä ja keitä kuului perheeseen?',
-      'Millaisia leikkejä ja kesäpäiviä muistatte?',
-      'Kuka oli teille tärkeä aikuinen lapsena?',
-    ],
-    followUps: [
-      'Kertokaa yksi konkreettinen tilanne, joka on jäänyt mieleen kuin elokuva.',
-      'Miltä arkiaamu kuulosti ja tuoksui?',
-      'Leena ja Jorma: muistatteko saman asian eri tavalla?',
-    ],
-  },
-  {
-    id: 'koti',
-    themeId: 'koti',
-    theme: 'Koti',
-    question:
-      'Millainen koti teillä oli, ja miltä arki siellä tuntui? Mitä huoneita, ääniä ja tapoja muistatte edelleen?',
-    prompts: [
-      'Kuvaikaa kotia oven avauksesta keittiöön.',
-      'Mikä paikka kotona oli teidän omintakeisin nurkkaus?',
-      'Miten naapurit ja pihapiiri kuuluivat elämään?',
-    ],
-    followUps: [
-      'Onko jokin esine tai huonekalu, joka edustaa kotia vieläkin?',
-      'Mitä kotona ei saanut tehdä — ja mitä sai?',
-      'Jos palaisitte sinne nyt, mitä etsisitte ensimmäisenä?',
-    ],
-  },
-  {
-    id: 'perinteet',
-    themeId: 'perinteet',
-    theme: 'Perheen perinteet',
-    question:
-      'Mitä perinteitä perheessänne vaalittiin juhlissa ja arjessa? Mikä teki juuri teidän perheestä teidän perheen?',
-    prompts: [
-      'Miten joulu, juhannus tai syntymäpäivät vietettiin?',
-      'Mitä ruokia, lauluja tai tapoja ei saanut unohtaa?',
-      'Kuka piti perinteitä yllä?',
-    ],
-    followUps: [
-      'Mikä perinne on jatkunut tähän päivään?',
-      'Onko jokin tapa, jota kadutte että jäi pois?',
-      'Haluaisitteko, että jokin tietty tarina kerrotaan aina uudelleen?',
-    ],
-  },
-  {
-    id: 'tyo',
-    themeId: 'tyo',
-    theme: 'Työ',
-    question:
-      'Millaista työelämänne oli? Mikä työssä oli tärkeää, ja mitä se opetti teistä itsestänne?',
-    prompts: [
-      'Mikä oli ensimmäinen oikea työnne?',
-      'Mistä työstä olette ylpeimpiä?',
-      'Ketkä työtoverit tai esimiehet jäivät mieleen?',
-    ],
-    followUps: [
-      'Miten työ ja perhe-elämä mahtuivat samaan viikkoon?',
-      'Muuttuiko työn merkitys iän myötä?',
-      'Jos nuori kysyisi neuvoa työelämään, mitä sanoisitte ensin?',
-    ],
-  },
-  {
-    id: 'rakkaus',
-    themeId: 'rakkaus',
-    theme: 'Rakkaus ja perhe',
-    question:
-      'Miten teistä tuli perhe, ja mitä rakkaus on merkinnyt matkan varrella — arjessa, ei vain juhlissa?',
-    prompts: [
-      'Miten kohtasitte toisenne?',
-      'Millainen oli yhteisen elämän alku?',
-      'Mitä lapset ja läheiset ovat opettaneet rakkaudesta?',
-    ],
-    followUps: [
-      'Mikä pieni arkinen ele on merkinnyt eniten?',
-      'Miten olette pitäneet yhtä vaikeina kausina?',
-      'Mitä haluaisitte Vilin ja tulevien sukupolvien ymmärtävän teidän tarinastanne?',
-    ],
-  },
-  {
-    id: 'vaikeat-ajat',
-    themeId: 'vaikeat-ajat',
-    theme: 'Vaikeat ajat',
-    question:
-      'Oletteko kokeneet aikoja, jotka olivat erityisen raskaita? Mikä auttoi eteenpäin, ja mitä niistä jäi käteen?',
-    prompts: [
-      'Saatte valita, kuinka syvälle mennään — tauko on aina sallittu.',
-      'Kuka tai mikä kantoi silloinkin, kun voimat olivat vähissä?',
-      'Onko jokin lause tai ajatus, joka piti pystyssä?',
-    ],
-    followUps: [
-      'Mitä toivoisitte, että joku olisi sanonut teille silloin?',
-      'Miten se aika muutti teitä?',
-      'Haluatteko, että tämä osa jää perhehistoriaan vai jääkö se tähän huoneeseen?',
-    ],
-  },
-  {
-    id: 'paikat',
-    themeId: 'paikat',
-    theme: 'Paikat',
-    question:
-      'Mitkä paikat ovat jääneet sydämeen? Missä olette tunteneet kuuluvanne, ja mitkä maisemat palaavat unissa?',
-    prompts: [
-      'Kotiseutu, mökki, kaupunki, metsä, kirkko, kahvila — mikä nousee ensin?',
-      'Onko paikka, jota ei enää ole?',
-      'Minne veisitte meidät, jos voisimme kävellä sinne yhdessä?',
-    ],
-    followUps: [
-      'Kuvaikaa paikka niin, että sen voi nähdä silmät kiinni.',
-      'Kenen kanssa se paikka liittyy yhteen?',
-      'Onko jokin haju, ääni tai vuodenaika, joka vie sinne heti?',
-    ],
-  },
-  {
-    id: 'teknologia',
+    id: 'eka-telkkari',
     themeId: 'teknologia',
     theme: 'Teknologia ja muutos',
-    question:
-      'Miten maailma ja arjen tekniikka ovat muuttuneet elämänne aikana? Mikä muutos on ollut suurin — ja mikä yllätti?',
-    prompts: [
-      'Muistatteko ajan ennen televisiota, automaattivaihdetta tai kännykkää?',
-      'Mikä uusi vekotin ihastutti, mikä ärsytti?',
-      'Miten yhteydenpito läheisiin on muuttunut?',
-    ],
+    label: 'Eka telkkari',
+    question: EXACT_PROMPTS[0],
     followUps: [
-      'Mikä vanha tapa oli parempi kuin nykyinen?',
-      'Mikä nykyajan juttu on teille aidosti hyödyllinen?',
-      'Miltä 1950–60-lukujen arki tuntuisi nuorelle nyt?',
+      'Missä telkkari oli, ja kuka sai päättää mitä katsottiin?',
+      'Miltä arki tuntui ennen telkkaria — radio, lehdet, naapurit?',
+      'Mikä muu vekotin tuli taloon samaan aikaan, ja mikä muutos yllätti eniten?',
     ],
   },
   {
-    id: 'neuvo',
+    id: 'eka-auto',
+    themeId: 'paikat',
+    theme: 'Paikat',
+    label: 'Eka auto',
+    question: EXACT_PROMPTS[1],
+    followUps: [
+      'Mihin sillä eka reissulla mentiin, ja mitä näitte matkalla?',
+      'Missä autolla käytiin muuten — mökki, sukulaiset, tanssit?',
+      'Onko se paikka vielä olemassa, vai onko se jäänyt vain muistoihin?',
+    ],
+  },
+  {
+    id: 'kuu-1969',
+    themeId: 'lapsuus',
+    theme: 'Lapsuus',
+    label: 'Kuu 1969',
+    question: EXACT_PROMPTS[2],
+    followUps: [
+      'Missä asuitte silloin, ja keitä oli samassa huoneessa?',
+      'Mitä teitte lapsina sinä iltana — valvoitteko, vai kuulitteko vasta aamulla?',
+      'Leena ja Jorma: muistatteko sen illan eri tavalla?',
+    ],
+  },
+  {
+    id: 'musa-70-luku',
+    themeId: 'koti',
+    theme: 'Koti',
+    label: '70-luvun musa',
+    question: EXACT_PROMPTS[3],
+    followUps: [
+      'Missä levyjä tai kasetteja kuunneltiin — keittiössä, omassa huoneessa, autotallissa?',
+      'Kuka toi musan kotiin, ja saiko sitä luukuttaa ääneen?',
+      'Mikä kappale palauttaa sen kodin heti mieleen?',
+    ],
+  },
+  {
+    id: 'kesaduuni',
+    themeId: 'tyo',
+    theme: 'Työ',
+    label: 'Eka kesäduuni',
+    question: EXACT_PROMPTS[4],
+    followUps: [
+      'Oliko se kesäduuni ensimmäinen oikea työ, ja mitä siellä tehtiin?',
+      'Mihin palkka meni, ja miltä markat tuntuivat kädessä?',
+      'Miten työelämä jatkui siitä eteenpäin?',
+    ],
+  },
+  {
+    id: 'tapaaminen',
+    themeId: 'rakkaus',
+    theme: 'Rakkaus ja perhe',
+    label: 'Miten tapasitte',
+    question: EXACT_PROMPTS[5],
+    followUps: [
+      'Kuka esitteli, vai törmäsittekö ihan itse?',
+      'Mitä ajattelitte toisistanne eka illan jälkeen?',
+      'Miten yhteinen elämä ja perhe kasvoivat siitä kohtaamisesta?',
+    ],
+  },
+  {
+    id: 'lempisafka',
+    themeId: 'perheperinteet',
+    theme: 'Perheen perinteet',
+    label: 'Lempisafka',
+    question: EXACT_PROMPTS[6],
+    followUps: [
+      'Onko se ruoka jäänyt juhlapöytään vai kadonnut?',
+      'Mitä muita perinneruokia mutsi tai mummo teki jouluun tai arkeen?',
+      'Haluaisitteko, että joku tekee sitä vielä — ja kuka osaisi?',
+    ],
+  },
+  {
+    id: 'kylanraitti',
+    themeId: 'vaikeat-ajat',
+    theme: 'Vaikeat ajat',
+    label: 'Kylänraitti',
+    question: EXACT_PROMPTS[7],
+    followUps: [
+      'Oliko aikoja, jolloin ei ollut kivaa hengata — raha, riidat, terveys, muutokset?',
+      'Mikä auttoi eteenpäin, kun nuoruus ei ollut pelkkää raittia?',
+      'Saatte jättää tämän kevyeksi. Tauko on aina sallittu.',
+    ],
+  },
+  {
+    id: 'vanhat-kuvat',
     themeId: 'neuvo',
     theme: 'Neuvo',
-    question:
-      'Mitä neuvoisin nuoremmille? Mitä olisitte itse halunneet tietää aiemmin — työstä, rakkaudesta, rahasta tai rohkeudesta?',
-    prompts: [
-      'Yksi neuvo, jonka toivoisitte jäävän mieleen.',
-      'Mitä tekisitte toisin, jos aloittaisitte alusta?',
-      'Mitä ette vaihtaisi mistään hinnasta?',
-    ],
+    label: 'Vanhat kuvat',
+    question: EXACT_PROMPTS[8],
     followUps: [
-      'Onko neuvo erilainen Leenalle ja Jormalle — antakaa molemmat ommanne.',
-      'Mitä neuvoisin Vilille juuri nyt?',
-      'Mikä oppi tuli vasta myöhään, mutta oli sen arvoinen?',
+      'Mitä neuvoisin nuorelle itsellenne, joka pukeutui noin?',
+      'Mitä naurattaisi näyttää lapsenlapsille, ja mitä ei?',
+      'Yksi neuvo rohkeudesta tai siitä, ettei ota itseään liian vakavasti?',
     ],
   },
   {
-    id: 'viesti',
+    id: 'viikonloppu-uusiksi',
     themeId: 'viesti',
     theme: 'Viesti tuleville sukupolville',
-    question:
-      'Minkä viestin haluaisitte jättää lapsenlapsille ja tuleville sukupolville? Mitä ei saa unohtaa teistä ja suvusta?',
-    prompts: [
-      'Kertokaa se niin, että se voidaan lukea ääneen vuosien päästä.',
-      'Mitkä arvot kannattelevat perhettä?',
-      'Onko jokin tarina, joka pitää kertoa uudelleen ja uudelleen?',
-    ],
+    label: 'Viikonloppu uusiksi',
+    question: EXACT_PROMPTS[9],
     followUps: [
-      'Haluatteko sanoa jotain suoraan Vilille?',
-      'Jos tästä haastattelusta jäisi yksi lause, mikä se olisi?',
-      'Kiitos — onko vielä jotain, mitä emme kysyneet mutta mikä kuuluu mukaan?',
+      'Minkä viestin se viikonloppu jättäisi lapsenlapsille?',
+      'Mitä ei saa unohtaa teistä ja siitä ajasta?',
+      'Haluatteko sanoa vielä jotain suoraan Vilille?',
     ],
   },
 ]

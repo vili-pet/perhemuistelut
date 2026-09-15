@@ -1,4 +1,4 @@
-import type { Person, SpeakerId, SpeakerSegment } from '../types.ts'
+import type { Person, SpeakerId, SpeakerSegment, TopicTimestamp } from '../types.ts'
 
 export type TranscriptionStatus = 'placeholder' | 'queued' | 'completed' | 'failed'
 
@@ -9,10 +9,15 @@ export interface SpeakerHint {
   birthYear?: number
 }
 
+export interface TranscriptionQuestionCue {
+  id: string
+  question: string
+  theme: string
+  cueOffsetMs?: number
+}
+
 export interface TranscriptionRequest {
   interviewId: string
-  questionId: string
-  question: string
   language: 'fi'
   audioBlob?: Blob
   audioBlobRef?: string
@@ -20,6 +25,8 @@ export interface TranscriptionRequest {
   durationMs?: number
   speakers: SpeakerHint[]
   diarization: true
+  topicTimestamps: TopicTimestamp[]
+  questions: TranscriptionQuestionCue[]
 }
 
 export interface TranscriptionResult {
@@ -34,8 +41,6 @@ export interface TranscriptionWebhookPayload {
   event: 'transcription.requested'
   version: '1'
   interviewId: string
-  questionId: string
-  question: string
   language: 'fi'
   callbackUrl: string
   audio: {
@@ -43,7 +48,10 @@ export interface TranscriptionWebhookPayload {
     mimeType?: string
     durationMs?: number
     encodingHint: string
+    continuousSession: true
   }
+  topicTimestamps: TopicTimestamp[]
+  questions: TranscriptionQuestionCue[]
   diarization: {
     enabled: true
     minSpeakers: number

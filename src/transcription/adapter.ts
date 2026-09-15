@@ -18,7 +18,8 @@ export class PlaceholderTranscriptionAdapter implements TranscriptionAdapter {
       segments: [],
       provider: this.name,
       message:
-        'Litterointiputki on valmis kytkettäväksi. Tämä adapteri ei lähetä ääntä minnekään — kirjoita jaksot käsin tai määritä webhook.',
+        'Litterointiputki on valmis kytkettäväksi. Tämä adapteri ei lähetä ääntä minnekään eikä ' +
+        'kutsu webhookia haastattelun aikana — kirjoita jaksot käsin tai määritä webhook jälkeenpäin.',
     }
   }
 
@@ -42,7 +43,7 @@ export class WebhookTranscriptionAdapter implements TranscriptionAdapter {
     const body = new FormData()
     body.set('payload', JSON.stringify(payload))
     if (request.audioBlob) {
-      body.set('audio', request.audioBlob, `${request.questionId}.audio`)
+      body.set('audio', request.audioBlob, `${request.interviewId}.audio`)
     }
 
     try {
@@ -66,11 +67,13 @@ export class WebhookTranscriptionAdapter implements TranscriptionAdapter {
           {
             id: createId('jakso'),
             speaker: 'unknown',
-            text: 'Litterointi jonossa ulkoisessa putkessa.',
+            text: 'Litterointi jonossa ulkoisessa putkessa. Puhujat: Vili / Leena / Jorma / Tuntematon.',
           },
         ],
         provider: this.name,
-        message: 'Pyyntö lähetettiin litterointiputkeen. Puhujien erottelu (Vili / Leena / Jorma / Tuntematon) on mukana payloadissa.',
+        message:
+          'Pyyntö lähetettiin litterointiputkeen jälkeenpäin. Mukana on koko istunnon ääni, aihemerkit ja ' +
+          'puhujien erottelu (Vili / Leena / Jorma / Tuntematon).',
       }
     } catch {
       return {

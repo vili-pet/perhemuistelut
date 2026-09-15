@@ -1,9 +1,7 @@
-import { genitiveName } from '../data/participants.ts'
-
 interface ExportPanelProps {
   interviewId: string
   updatedAt: string
-  respondentName: string
+  respondentNames: string
   onExportText: () => void
   onExportJson: () => void
 }
@@ -11,7 +9,7 @@ interface ExportPanelProps {
 export function ExportPanel({
   interviewId,
   updatedAt,
-  respondentName,
+  respondentNames,
   onExportText,
   onExportJson,
 }: ExportPanelProps) {
@@ -19,12 +17,12 @@ export function ExportPanel({
     <section className="export" aria-labelledby="vienti-otsikko">
       <h2 id="vienti-otsikko">Tallennus ja kopio</h2>
       <p className="status-line" role="status">
-        {genitiveName(respondentName)} tarinat ovat tallessa tällä laitteella. Selaimen sulkeminen
-        ei pyyhi niitä. Viimeksi {updatedAt}.
+        {respondentNames} tarinat ovat tallessa tällä laitteella. Selaimen sulkeminen ei pyyhi
+        niitä. Viimeksi {updatedAt}.
       </p>
       <p>
-        Ottakaa kopio tiedostona, jos haluatte varmuuskopion pois selaimesta. Ääninauhoja ei ole
-        tiedoston sisällä.
+        Ottakaa kopio tiedostona, jos haluatte varmuuskopion pois selaimesta. JSON sisältää
+        aihemerkit ja äänimetatiedot, mutta ei äänibittiä.
       </p>
       <p className="export__meta">
         Istunto <code>{interviewId}</code>

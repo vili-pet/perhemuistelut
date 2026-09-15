@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { SPEAKER_LABELS } from '../data/participants.ts'
+import { SPEAKER_LABELS, respondentNamesWithYears } from '../data/participants.ts'
 import {
   downloadJson,
   downloadText,
@@ -13,9 +13,10 @@ import { useRecorder } from '../hooks/useRecorder.ts'
 import { createId, nowIso } from '../lib/id.ts'
 import { formatClock } from '../lib/format.ts'
 import { createObjectUrl, getAudioClip, saveAudioClip } from '../storage/audioStore.ts'
+import type { TopicMarker } from '../storage/interviewStorage.ts'
 import { createTranscriptionAdapter } from '../transcription/adapter.ts'
 import { toSpeakerHints } from '../transcription/payload.ts'
-import type { AudioRecordingMeta, RespondentId } from '../types.ts'
+import type { AudioRecordingMeta } from '../types.ts'
 import { ExportPanel } from './ExportPanel.tsx'
 import { ProgressHeader } from './ProgressHeader.tsx'
 import { QuestionPanel } from './QuestionPanel.tsx'
@@ -28,13 +29,8 @@ function revokeAll(urls: Record<string, string>) {
   }
 }
 
-interface InterviewCockpitProps {
-  personId: RespondentId
-  onChangePerson: () => void
-}
-
-export function InterviewCockpit({ personId, onChangePerson }: InterviewCockpitProps) {
-  const interview = useInterview(personId)
+export function InterviewCockpit() {
+  const interview = useInterview()
   const recorder = useRecorder()
   const adapter = useMemo(() => createTranscriptionAdapter(), [])
   const dialogRef = useRef<HTMLDialogElement>(null)
@@ -42,9 +38,19 @@ export function InterviewCockpit({ personId, onChangePerson }: InterviewCockpitP
   const [adapterMessage, setAdapterMessage] = useState<string>()
   const [liveMessage, setLiveMessage] = useState('Valmis kirjaamaan tarinaa.')
 
+  const liveRecording = recorder.uiState === 'recording' || recorder.uiState === 'paused'
+
+  const topicMarker = useCallback((): TopicMarker | undefined => {
+    if (!liveRecording) return undefined
+    return {
+      offsetMs: recorder.elapsedMs,
+      tapeIndex: interview.session.recordings.length,
+    }
+  }, [interview.session.recordings.length, liveRecording, recorder.elapsedMs])
+
   useEffect(() => {
     let cancelled = false
-    const ids = interview.answer.recordings.map((item) => item.id)
+    const ids = interview.session.recordings.map((item) => item.id)
 
     async function loadUrls() {
       const next: Record<string, string> = {}
@@ -70,7 +76,7 @@ export function InterviewCockpit({ personId, onChangePerson }: InterviewCockpitP
     return () => {
       cancelled = true
     }
-  }, [interview.answer.recordings])
+  }, [interview.session.recordings])
 
   useEffect(() => () => {
     setPlaybackUrls((previous) => {
@@ -99,7 +105,7 @@ export function InterviewCockpit({ personId, onChangePerson }: InterviewCockpitP
         source: meta.source,
         fileName: meta.fileName,
       })
-      setLiveMessage('Nauhoitus tallennettiin tälle kysymykselle.')
+      setLiveMessage('Nauhoitus tallennettiin yhteiseen istuntoon.')
     },
     [interview],
   )
@@ -108,8 +114,12 @@ export function InterviewCockpit({ personId, onChangePerson }: InterviewCockpitP
     if (recorder.uiState === 'idle' || recorder.uiState === 'error') {
       void recorder.start().then((ok) => {
         if (ok) {
+          interview.markTopic({
+            offsetMs: 0,
+            tapeIndex: interview.session.recordings.length,
+          })
           interview.markRecordingWindow()
-          setLiveMessage('Nauhoitus käynnissä.')
+          setLiveMessage('Nauhoitus käynnissä. Aiheen vaihto ei katkaise ääntä.')
         }
       })
     }
@@ -118,7 +128,7 @@ export function InterviewCockpit({ personId, onChangePerson }: InterviewCockpitP
   const handlePause = useCallback(() => {
     if (recorder.uiState === 'recording') {
       recorder.pause()
-      setLiveMessage('Nauhoitus tauolla.')
+      setLiveMessage('Nauhoitus tauolla. Kello jatkuu, kun jatkat.')
       return
     }
     if (recorder.uiState === 'paused') {
@@ -127,8 +137,16 @@ export function InterviewCockpit({ personId, onChangePerson }: InterviewCockpitP
     }
   }, [recorder])
 
-  const handleStopSave = useCallback(async () => {
-    const result = await recorder.stop()
+  const handleStop = useCallback(() => {
+    void recorder.stop().then((result) => {
+      if (result) {
+        setLiveMessage('Nauhoitus lopetettu. Paina Tallenna, jotta nauha jää tälle laitteelle.')
+      }
+    })
+  }, [recorder])
+
+  const handleSave = useCallback(async () => {
+    const result = await recorder.save()
     if (!result) return
     try {
       await persistRecording({
@@ -158,16 +176,43 @@ export function InterviewCockpit({ personId, onChangePerson }: InterviewCockpitP
     [persistRecording],
   )
 
+  const handleNext = useCallback(() => {
+    interview.next(topicMarker())
+    setLiveMessage(
+      liveRecording
+        ? 'Aihe vaihtui, nauhoitus jatkuu.'
+        : 'Seuraava aihe. Nauhoitus ei katkennut, koska se ei ollut käynnissä.',
+    )
+  }, [interview, liveRecording, topicMarker])
+
+  const handlePrevious = useCallback(() => {
+    interview.previous(topicMarker())
+    setLiveMessage(
+      liveRecording ? 'Edellinen aihe, nauhoitus jatkuu.' : 'Edellinen aihe.',
+    )
+  }, [interview, liveRecording, topicMarker])
+
+  const handleGoTo = useCallback(
+    (index: number) => {
+      interview.goTo(index, topicMarker())
+      if (liveRecording) {
+        setLiveMessage('Aihe vaihtui, nauhoitus jatkuu.')
+      }
+    },
+    [interview, liveRecording, topicMarker],
+  )
+
   const openRestart = useCallback(() => {
     dialogRef.current?.showModal()
   }, [])
 
   const confirmRestart = useCallback(async () => {
     dialogRef.current?.close()
+    await recorder.discard()
     await interview.restart()
     setAdapterMessage(undefined)
-    setLiveMessage('Tämän haastateltavan tarinat tyhjennettiin.')
-  }, [interview])
+    setLiveMessage('Yhteinen haastattelu tyhjennettiin.')
+  }, [interview, recorder])
 
   const handleExportJson = useCallback(() => {
     downloadJson(exportFileName(interview.session), interview.exportDocument)
@@ -191,7 +236,7 @@ export function InterviewCockpit({ personId, onChangePerson }: InterviewCockpitP
   }, [interview])
 
   const handleTranscription = useCallback(async () => {
-    const latest = interview.answer.recordings.at(-1)
+    const latest = interview.session.recordings.at(-1)
     let audioBlob: Blob | undefined
     if (latest) {
       try {
@@ -204,8 +249,6 @@ export function InterviewCockpit({ personId, onChangePerson }: InterviewCockpitP
 
     const result = await adapter.transcribe({
       interviewId: interview.session.id,
-      questionId: interview.question.id,
-      question: interview.question.question,
       language: 'fi',
       audioBlob,
       audioBlobRef: latest?.blobRef,
@@ -213,6 +256,13 @@ export function InterviewCockpit({ personId, onChangePerson }: InterviewCockpitP
       durationMs: latest?.durationMs,
       speakers: toSpeakerHints(),
       diarization: true,
+      topicTimestamps: interview.session.topicTimestamps,
+      questions: interview.session.answers.map((item) => ({
+        id: item.questionId,
+        question: item.question,
+        theme: item.theme,
+        cueOffsetMs: item.cueOffsetMs,
+      })),
     })
 
     interview.updateTranscript(result.transcript)
@@ -226,11 +276,12 @@ export function InterviewCockpit({ personId, onChangePerson }: InterviewCockpitP
   useKeyboardShortcuts({
     onRecord: handleRecord,
     onPause: handlePause,
-    onStopSave: () => {
-      void handleStopSave()
+    onStop: handleStop,
+    onSave: () => {
+      void handleSave()
     },
-    onNext: interview.next,
-    onPrevious: interview.previous,
+    onNext: handleNext,
+    onPrevious: handlePrevious,
     onRestart: openRestart,
   })
 
@@ -241,11 +292,10 @@ export function InterviewCockpit({ personId, onChangePerson }: InterviewCockpitP
       </a>
 
       <ProgressHeader
-        respondent={interview.respondent}
+        respondents={interview.session.respondents}
         questionIndex={interview.questionIndex}
         questionCount={interview.questionCount}
-        onGoTo={interview.goTo}
-        onChangePerson={onChangePerson}
+        onGoTo={handleGoTo}
       />
 
       <p className="visually-hidden" aria-live="polite">
@@ -261,15 +311,17 @@ export function InterviewCockpit({ personId, onChangePerson }: InterviewCockpitP
             elapsedMs={recorder.elapsedMs}
             errorMessage={recorder.errorMessage}
             canPause={recorder.canPause}
-            recordings={interview.answer.recordings}
+            recordings={interview.session.recordings}
+            topicTimestamps={interview.session.topicTimestamps}
             playbackUrls={playbackUrls}
             onRecord={handleRecord}
             onPause={handlePause}
-            onStopSave={() => {
-              void handleStopSave()
+            onStop={handleStop}
+            onSave={() => {
+              void handleSave()
             }}
-            onNext={interview.next}
-            onPrevious={interview.previous}
+            onNext={handleNext}
+            onPrevious={handlePrevious}
             onRestart={openRestart}
             onUpload={(file) => {
               void handleUpload(file)
@@ -281,7 +333,6 @@ export function InterviewCockpit({ personId, onChangePerson }: InterviewCockpitP
 
         <div className="layout__side">
           <TranscriptEditor
-            respondent={interview.respondent}
             notes={interview.answer.notes}
             transcript={interview.answer.transcript}
             segments={interview.answer.segments}
@@ -300,7 +351,7 @@ export function InterviewCockpit({ personId, onChangePerson }: InterviewCockpitP
           <ExportPanel
             interviewId={interview.session.id}
             updatedAt={formatClock(interview.session.updatedAt)}
-            respondentName={interview.respondent.name}
+            respondentNames={respondentNamesWithYears(interview.session.respondents)}
             onExportText={handleExportText}
             onExportJson={handleExportJson}
           />
@@ -308,10 +359,10 @@ export function InterviewCockpit({ personId, onChangePerson }: InterviewCockpitP
       </main>
 
       <dialog ref={dialogRef} className="confirm" aria-labelledby="alusta-otsikko">
-        <h2 id="alusta-otsikko">Tyhjennetäänkö tämän henkilön tarinat?</h2>
+        <h2 id="alusta-otsikko">Tyhjennetäänkö yhteinen haastattelu?</h2>
         <p>
-          Tämä pyyhkii vain valitun haastateltavan muistiinpanot, litteraatit ja nauhat tältä
-          laitteelta. Toisen vanhemman tarinat jäävät. Toimintoa ei voi perua.
+          Tämä pyyhkii Leenan ja Jorman yhteiset muistiinpanot, litteraatit, aihemerkit ja nauhat
+          tältä laitteelta. Toimintoa ei voi perua.
         </p>
         <div className="button-row">
           <button type="button" className="btn" onClick={() => dialogRef.current?.close()}>

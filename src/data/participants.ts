@@ -30,7 +30,7 @@ export const UNKNOWN_SPEAKER: Person = {
 export const ALL_SPEAKERS: Person[] = [INTERVIEWER, ...RESPONDENTS, UNKNOWN_SPEAKER]
 
 export const SPEAKER_LABELS: Record<Person['id'], string> = {
-  vili: 'Vili (haastattelija)',
+  vili: 'Vili',
   leena: 'Leena',
   jorma: 'Jorma',
   unknown: 'Tuntematon',
@@ -48,6 +48,12 @@ export function getRespondent(id: RespondentId): Person {
   return person
 }
 
-export function genitiveName(name: string): string {
-  return `${name}n`
+export function respondentNames(people: Person[] = RESPONDENTS): string {
+  return people.map((person) => person.name).join(' ja ')
+}
+
+export function respondentNamesWithYears(people: Person[] = RESPONDENTS): string {
+  return people
+    .map((person) => (person.birthYear ? `${person.name} (s. ${person.birthYear})` : person.name))
+    .join(' ja ')
 }

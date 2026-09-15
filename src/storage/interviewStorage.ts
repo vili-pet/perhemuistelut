@@ -1,16 +1,28 @@
-import { getRespondent, INTERVIEWER, isRespondentId } from '../data/participants.ts'
+import { INTERVIEWER, RESPONDENTS } from '../data/participants.ts'
 import { QUESTIONS } from '../data/questions.ts'
 import { createId, nowIso } from '../lib/id.ts'
-import type { InterviewSession, Person, QuestionAnswer, RespondentId } from '../types.ts'
+import type {
+  InterviewSession,
+  QuestionAnswer,
+  TopicTimestamp,
+} from '../types.ts'
 
 export const STORAGE_KEY = 'perhemuistelut.interview.v1'
-export const ACTIVE_RESPONDENT_KEY = 'perhemuistelut.active-respondent.v1'
 
 export const EMPTY_TRANSCRIPT_PLACEHOLDER =
   '(Litterointi odottaa ulkoista puheentunnistusputkea. Voit kirjoittaa tarinan itse.)'
 
-export function sessionStorageKey(personId: RespondentId): string {
-  return `${STORAGE_KEY}.${personId}`
+export interface TopicMarker {
+  offsetMs: number
+  tapeIndex: number
+}
+
+export function emptyMark(): QuestionAnswer['mark'] {
+  return {
+    interesting: false,
+    returnLater: false,
+    note: '',
+  }
 }
 
 export function createEmptyAnswer(question: (typeof QUESTIONS)[number]): QuestionAnswer {
@@ -18,14 +30,14 @@ export function createEmptyAnswer(question: (typeof QUESTIONS)[number]): Questio
     questionId: question.id,
     question: question.question,
     theme: question.theme,
-    recordings: [],
     transcript: EMPTY_TRANSCRIPT_PLACEHOLDER,
     notes: '',
     segments: [],
+    mark: emptyMark(),
   }
 }
 
-export function createEmptySession(respondent: Person): InterviewSession {
+export function createEmptySession(): InterviewSession {
   const timestamp = nowIso()
   return {
     schema: 'perhemuistelut.interview.v1',
@@ -33,8 +45,10 @@ export function createEmptySession(respondent: Person): InterviewSession {
     createdAt: timestamp,
     updatedAt: timestamp,
     interviewer: INTERVIEWER,
-    respondents: [respondent],
+    respondents: RESPONDENTS,
     currentQuestionIndex: 0,
+    topicTimestamps: [],
+    recordings: [],
     answers: QUESTIONS.map(createEmptyAnswer),
   }
 }
@@ -49,73 +63,163 @@ export function isInterviewSession(value: unknown): value is InterviewSession {
     session.answers.length === QUESTIONS.length &&
     typeof session.currentQuestionIndex === 'number' &&
     Array.isArray(session.respondents) &&
-    session.respondents.length > 0
+    session.respondents.length === 2 &&
+    Array.isArray(session.topicTimestamps) &&
+    Array.isArray(session.recordings)
   )
 }
 
-export function loadActiveRespondent(): RespondentId | null {
-  if (typeof localStorage === 'undefined') return null
-  try {
-    const raw = localStorage.getItem(ACTIVE_RESPONDENT_KEY)
-    return isRespondentId(raw) ? raw : null
-  } catch {
-    return null
+export function createTopicTimestamp(
+  session: InterviewSession,
+  index: number,
+  marker: TopicMarker,
+): TopicTimestamp {
+  const question = QUESTIONS[index]
+  return {
+    id: createId('merkki'),
+    questionId: question.id,
+    questionIndex: index,
+    offsetMs: Math.max(0, Math.round(marker.offsetMs)),
+    at: nowIso(),
+    tapeIndex: marker.tapeIndex,
   }
 }
 
-export function saveActiveRespondent(personId: RespondentId | null): void {
-  if (typeof localStorage === 'undefined') return
-  if (personId) {
-    localStorage.setItem(ACTIVE_RESPONDENT_KEY, personId)
-    return
+export function withQuestionIndex(
+  session: InterviewSession,
+  index: number,
+  marker?: TopicMarker,
+): InterviewSession {
+  const nextIndex = Math.min(Math.max(index, 0), QUESTIONS.length - 1)
+  const sameQuestion = nextIndex === session.currentQuestionIndex
+  const timestamps = marker
+    ? appendTopicTimestamp(session, nextIndex, marker, sameQuestion)
+    : session.topicTimestamps
+
+  const answers = marker
+    ? stampAnswerWindow(session.answers, session.currentQuestionIndex, nextIndex, marker)
+    : session.answers
+
+  if (sameQuestion && timestamps === session.topicTimestamps) {
+    return session
   }
-  localStorage.removeItem(ACTIVE_RESPONDENT_KEY)
+
+  return {
+    ...session,
+    currentQuestionIndex: nextIndex,
+    topicTimestamps: timestamps,
+    answers,
+    updatedAt: nowIso(),
+  }
 }
 
-export function loadSession(personId: RespondentId): InterviewSession | null {
+function appendTopicTimestamp(
+  session: InterviewSession,
+  index: number,
+  marker: TopicMarker,
+  sameQuestion: boolean,
+): TopicTimestamp[] {
+  const last = session.topicTimestamps.at(-1)
+  if (
+    last &&
+    last.questionId === QUESTIONS[index].id &&
+    last.tapeIndex === marker.tapeIndex &&
+    (sameQuestion || last.offsetMs === Math.max(0, Math.round(marker.offsetMs)))
+  ) {
+    return session.topicTimestamps
+  }
+
+  return [...session.topicTimestamps, createTopicTimestamp(session, index, marker)]
+}
+
+function stampAnswerWindow(
+  answers: QuestionAnswer[],
+  fromIndex: number,
+  toIndex: number,
+  marker: TopicMarker,
+): QuestionAnswer[] {
+  const stamp = nowIso()
+  return answers.map((answer, index) => {
+    if (index === fromIndex && fromIndex !== toIndex) {
+      return { ...answer, endedAt: stamp }
+    }
+    if (index === toIndex) {
+      return {
+        ...answer,
+        startedAt: answer.startedAt ?? stamp,
+        cueOffsetMs: answer.cueOffsetMs ?? marker.offsetMs,
+      }
+    }
+    return answer
+  })
+}
+
+export function migrateSession(session: InterviewSession): InterviewSession {
+  return {
+    ...session,
+    topicTimestamps: session.topicTimestamps ?? [],
+    recordings: session.recordings ?? [],
+    answers: session.answers.map((answer) => ({
+      ...answer,
+      segments: answer.segments ?? [],
+      mark: {
+        interesting: Boolean(answer.mark?.interesting),
+        returnLater: Boolean(answer.mark?.returnLater),
+        note: answer.mark?.note ?? '',
+        updatedAt: answer.mark?.updatedAt,
+        pokeSentAt: answer.mark?.pokeSentAt,
+      },
+    })),
+  }
+}
+
+export function loadSession(): InterviewSession | null {
   if (typeof localStorage === 'undefined') return null
   try {
-    const raw = localStorage.getItem(sessionStorageKey(personId))
+    const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
     const parsed: unknown = JSON.parse(raw)
     if (!isInterviewSession(parsed)) return null
-    return parsed
+    return migrateSession(parsed)
   } catch {
     return null
   }
 }
 
-export function loadOrCreateSession(personId: RespondentId): InterviewSession {
-  return loadSession(personId) ?? createEmptySession(getRespondent(personId))
+export function loadOrCreateSession(): InterviewSession {
+  return loadSession() ?? createEmptySession()
 }
 
 export function saveSession(session: InterviewSession): void {
   if (typeof localStorage === 'undefined') return
-  const personId = session.respondents[0]?.id
-  if (!isRespondentId(personId)) return
   const next: InterviewSession = {
     ...session,
     updatedAt: nowIso(),
   }
-  localStorage.setItem(sessionStorageKey(personId), JSON.stringify(next))
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
 }
 
-export function clearSession(personId: RespondentId): void {
+export function clearSession(): void {
   if (typeof localStorage === 'undefined') return
-  localStorage.removeItem(sessionStorageKey(personId))
+  localStorage.removeItem(STORAGE_KEY)
 }
 
 export function listBlobRefs(session: InterviewSession): string[] {
-  return session.answers.flatMap((answer) => answer.recordings.map((recording) => recording.blobRef))
+  return session.recordings.map((recording) => recording.blobRef)
 }
 
 export function answerHasContent(answer: QuestionAnswer): boolean {
   const notes = answer.notes.trim().length > 0
+  const markNote = answer.mark.note.trim().length > 0
+  const flagged = answer.mark.interesting || answer.mark.returnLater
   const transcript =
     answer.transcript.trim().length > 0 && answer.transcript !== EMPTY_TRANSCRIPT_PLACEHOLDER
-  const recordings = answer.recordings.length > 0
   const segments = answer.segments.some((segment) => segment.text.trim().length > 0)
-  return notes || transcript || recordings || segments
+  return notes || markNote || flagged || transcript || segments
+}
+
+export function isFlaggedAnswer(answer: QuestionAnswer): boolean {
+  return answer.mark.interesting || answer.mark.returnLater || answer.mark.note.trim().length > 0
 }
 
 export function countSavedStories(session: InterviewSession | null): number {

@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { getRespondent } from '../data/participants.ts'
 import { createEmptySession } from '../storage/interviewStorage.ts'
 import {
   exportFileName,
@@ -9,28 +8,58 @@ import {
 } from './familyHistory.ts'
 
 describe('family history export', () => {
-  it('tuottaa jäsennellyn sukuhistoria-JSONin yhdelle haastateltavalle', () => {
-    const session = createEmptySession(getRespondent('jorma'))
-    session.answers[0].notes = 'Jorma muisti koulumatkan.'
+  it('tuottaa jäsennellyn sukuhistoria-JSONin molemmille vastaajille', () => {
+    const session = createEmptySession()
+    session.answers[0].notes = 'Leena ja Jorma muistivat telkkarin.'
     session.answers[0].startedAt = session.createdAt
+    session.answers[0].cueOffsetMs = 0
+    session.recordings.push({
+      id: 'nauha-1',
+      blobRef: 'nauha-1',
+      mimeType: 'audio/webm',
+      createdAt: session.createdAt,
+      source: 'media-recorder',
+      durationMs: 184000,
+    })
+    session.topicTimestamps.push({
+      id: 'merkki-1',
+      questionId: session.answers[0].questionId,
+      questionIndex: 0,
+      offsetMs: 0,
+      at: session.createdAt,
+      tapeIndex: 0,
+    })
+
     const exported = toFamilyHistoryExport(session)
     expect(exported.schema).toBe('perhemuistelut.family-history.v1')
     expect(exported.interview.interviewer.name).toBe('Vili')
-    expect(exported.interview.respondents.map((person) => person.name)).toEqual(['Jorma'])
+    expect(exported.interview.respondents.map((person) => person.name)).toEqual(['Leena', 'Jorma'])
+    expect(exported.interview.continuousRecording).toBe(true)
+    expect(exported.interview.audio).toHaveLength(1)
+    expect(exported.interview.topicTimestamps).toHaveLength(1)
     expect(exported.interview.questions).toHaveLength(10)
-    expect(exported.interview.questions[0]?.notes).toBe('Jorma muisti koulumatkan.')
+    expect(exported.interview.questions[0]?.notes).toBe('Leena ja Jorma muistivat telkkarin.')
     expect(exported.interview.questions[0]?.transcript.placeholder).toBe(true)
-    expect(exportFileName(session)).toMatch(/^perhemuistelut-jorma-\d{4}-\d{2}-\d{2}\.json$/)
+    expect(exported.interview.questions[0]?.recordedAt.cueOffsetMs).toBe(0)
+    expect(exportFileName(session)).toMatch(/^perhemuistelut-leena-jorma-\d{4}-\d{2}-\d{2}\.json$/)
   })
 
   it('muodostaa luettavan tekstitiedoston vain täytetyistä aiheista', () => {
-    const session = createEmptySession(getRespondent('leena'))
+    const session = createEmptySession()
     session.answers[0].notes = 'Keinu pihalla.'
+    session.topicTimestamps.push({
+      id: 'merkki-1',
+      questionId: session.answers[0].questionId,
+      questionIndex: 0,
+      offsetMs: 0,
+      at: session.createdAt,
+      tapeIndex: 0,
+    })
     const text = toStoriesText(session)
-    expect(text).toContain('Haastateltava: Leena (s. 1957)')
-    expect(text).toContain('Lapsuus')
+    expect(text).toContain('Haastateltavat: Leena (s. 1957) ja Jorma (s. 1957)')
+    expect(text).toContain('Aihemerkit:')
     expect(text).toContain('Keinu pihalla.')
-    expect(text).not.toContain('2. Koti')
-    expect(storiesFileName(session)).toMatch(/^perhemuistelut-leena-\d{4}-\d{2}-\d{2}\.txt$/)
+    expect(text).not.toContain('2. ')
+    expect(storiesFileName(session)).toMatch(/^perhemuistelut-leena-jorma-\d{4}-\d{2}-\d{2}\.txt$/)
   })
 })

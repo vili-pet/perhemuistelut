@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { getRespondent } from '../data/participants.ts'
 import { QUESTIONS } from '../data/questions.ts'
 import { toFamilyHistoryExport } from '../export/familyHistory.ts'
 import { createId, nowIso } from '../lib/id.ts'
@@ -10,11 +9,12 @@ import {
   listBlobRefs,
   loadOrCreateSession,
   saveSession,
+  withQuestionIndex,
+  type TopicMarker,
 } from '../storage/interviewStorage.ts'
 import type {
   AudioRecordingMeta,
   InterviewSession,
-  RespondentId,
   SpeakerId,
   SpeakerSegment,
 } from '../types.ts'
@@ -33,8 +33,8 @@ function touchAnswer(
   }
 }
 
-export function useInterview(personId: RespondentId) {
-  const [session, setSession] = useState<InterviewSession>(() => loadOrCreateSession(personId))
+export function useInterview() {
+  const [session, setSession] = useState<InterviewSession>(() => loadOrCreateSession())
 
   useEffect(() => {
     try {
@@ -49,30 +49,27 @@ export function useInterview(personId: RespondentId) {
   const answer = session.answers[questionIndex]
   const isFirst = questionIndex === 0
   const isLast = questionIndex === QUESTIONS.length - 1
-  const respondent = session.respondents[0] ?? getRespondent(personId)
 
-  const goTo = useCallback((index: number) => {
-    setSession((current) => ({
-      ...current,
-      currentQuestionIndex: Math.min(Math.max(index, 0), QUESTIONS.length - 1),
-      updatedAt: nowIso(),
-    }))
+  const goTo = useCallback((index: number, marker?: TopicMarker) => {
+    setSession((current) => withQuestionIndex(current, index, marker))
   }, [])
 
-  const next = useCallback(() => {
-    setSession((current) => ({
-      ...current,
-      currentQuestionIndex: Math.min(current.currentQuestionIndex + 1, QUESTIONS.length - 1),
-      updatedAt: nowIso(),
-    }))
+  const next = useCallback((marker?: TopicMarker) => {
+    setSession((current) =>
+      withQuestionIndex(current, current.currentQuestionIndex + 1, marker),
+    )
   }, [])
 
-  const previous = useCallback(() => {
-    setSession((current) => ({
-      ...current,
-      currentQuestionIndex: Math.max(current.currentQuestionIndex - 1, 0),
-      updatedAt: nowIso(),
-    }))
+  const previous = useCallback((marker?: TopicMarker) => {
+    setSession((current) =>
+      withQuestionIndex(current, current.currentQuestionIndex - 1, marker),
+    )
+  }, [])
+
+  const markTopic = useCallback((marker: TopicMarker) => {
+    setSession((current) =>
+      withQuestionIndex(current, current.currentQuestionIndex, marker),
+    )
   }, [])
 
   const updateNotes = useCallback((notes: string) => {
@@ -94,7 +91,7 @@ export function useInterview(personId: RespondentId) {
     )
   }, [])
 
-  const addSegment = useCallback((speaker: SpeakerId = personId) => {
+  const addSegment = useCallback((speaker: SpeakerId = 'unknown') => {
     const segment: SpeakerSegment = {
       id: createId('jakso'),
       speaker,
@@ -107,7 +104,7 @@ export function useInterview(personId: RespondentId) {
       })),
     )
     return segment.id
-  }, [personId])
+  }, [])
 
   const updateSegment = useCallback((segmentId: string, patch: Partial<SpeakerSegment>) => {
     setSession((current) =>
@@ -139,14 +136,20 @@ export function useInterview(personId: RespondentId) {
   }, [])
 
   const addRecording = useCallback((recording: AudioRecordingMeta) => {
-    setSession((current) =>
-      touchAnswer(current, current.currentQuestionIndex, (item) => ({
-        ...item,
-        startedAt: item.startedAt ?? recording.createdAt,
-        endedAt: recording.createdAt,
-        recordings: [...item.recordings, recording],
-      })),
-    )
+    setSession((current) => ({
+      ...current,
+      recordings: [...current.recordings, recording],
+      updatedAt: nowIso(),
+      answers: current.answers.map((item, index) =>
+        index === current.currentQuestionIndex
+          ? {
+              ...item,
+              startedAt: item.startedAt ?? recording.createdAt,
+              endedAt: recording.createdAt,
+            }
+          : item,
+      ),
+    }))
   }, [])
 
   const markRecordingWindow = useCallback(() => {
@@ -167,15 +170,14 @@ export function useInterview(personId: RespondentId) {
     } catch {
       // Audio cleanup is best-effort.
     }
-    clearSession(personId)
-    setSession(createEmptySession(getRespondent(personId)))
-  }, [personId, session])
+    clearSession()
+    setSession(createEmptySession())
+  }, [session])
 
   const exportDocument = useMemo(() => toFamilyHistoryExport(session), [session])
 
   return {
     session,
-    respondent,
     question,
     answer,
     questionIndex,
@@ -185,6 +187,7 @@ export function useInterview(personId: RespondentId) {
     goTo,
     next,
     previous,
+    markTopic,
     updateNotes,
     updateTranscript,
     addSegment,

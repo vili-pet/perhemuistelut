@@ -3,7 +3,8 @@ import { useEffect, useRef } from 'react'
 export interface InterviewShortcuts {
   onRecord: () => void
   onPause: () => void
-  onStopSave: () => void
+  onStop: () => void
+  onSave: () => void
   onNext: () => void
   onPrevious: () => void
   onRestart: () => void
@@ -44,9 +45,14 @@ export function useKeyboardShortcuts(handlers: InterviewShortcuts): void {
         actions.onPause()
         return
       }
+      if (key === 'e') {
+        event.preventDefault()
+        actions.onStop()
+        return
+      }
       if (key === 's') {
         event.preventDefault()
-        actions.onStopSave()
+        actions.onSave()
         return
       }
       if (key === 'n' || key === 'arrowright') {

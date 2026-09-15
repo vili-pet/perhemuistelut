@@ -1,9 +1,8 @@
 import type { ChangeEvent } from 'react'
-import { genitiveName, SPEAKER_LABELS } from '../data/participants.ts'
-import { SPEAKER_IDS, type Person, type SpeakerId, type SpeakerSegment } from '../types.ts'
+import { SPEAKER_LABELS } from '../data/participants.ts'
+import { SPEAKER_IDS, type SpeakerId, type SpeakerSegment } from '../types.ts'
 
 interface TranscriptEditorProps {
-  respondent: Person
   notes: string
   transcript: string
   segments: SpeakerSegment[]
@@ -19,7 +18,6 @@ interface TranscriptEditorProps {
 }
 
 export function TranscriptEditor({
-  respondent,
   notes,
   transcript,
   segments,
@@ -33,14 +31,12 @@ export function TranscriptEditor({
   onRequestTranscription,
   onMergeSegments,
 }: TranscriptEditorProps) {
-  const whose = genitiveName(respondent.name)
-
   return (
     <section className="editor" aria-labelledby="tarina-otsikko">
-      <h2 id="tarina-otsikko">{whose} tarina</h2>
+      <h2 id="tarina-otsikko">Tämän aiheen muistiinpanot</h2>
       <p className="editor__hint">
-        Kirjoittakaa vapaasti. Teksti tallentuu tälle laitteelle automaattisesti. Äänitys on
-        vapaaehtoinen.
+        Leena ja Jorma juttelevat yhdessä. Kirjoita vapaasti. Teksti tallentuu tälle laitteelle
+        automaattisesti. Äänitys on vapaaehtoinen.
       </p>
 
       <label className="field">
@@ -49,7 +45,7 @@ export function TranscriptEditor({
           value={notes}
           onChange={(event: ChangeEvent<HTMLTextAreaElement>) => onNotesChange(event.target.value)}
           rows={12}
-          placeholder={`Kirjoita tähän ${whose} muisto omilla sanoilla…`}
+          placeholder="Kirjoita tähän Leenan ja Jorman muisto omilla sanoilla…"
         />
       </label>
 
@@ -57,6 +53,8 @@ export function TranscriptEditor({
         <summary>Litterointi ja puhujajaksot (valinnainen)</summary>
         <p className="editor__hint">
           Adapteri: <strong>{adapterName}</strong>. Puhujat: Vili, Leena, Jorma tai Tuntematon.
+          Selainnauhoitus on lähde. Letterly ja Hedy kytketään vasta jälkeenpäin — ei live-webhookia
+          haastattelun aikana.
         </p>
 
         <label className="field">
@@ -71,7 +69,7 @@ export function TranscriptEditor({
         </label>
 
         <div className="button-row">
-          <button type="button" className="btn" onClick={() => onAddSegment(respondent.id)}>
+          <button type="button" className="btn" onClick={() => onAddSegment('unknown')}>
             Lisää jakso
           </button>
           <button type="button" className="btn" onClick={onMergeSegments}>

@@ -1,7 +1,8 @@
 import type { ChangeEvent } from 'react'
+import { QUESTIONS } from '../data/questions.ts'
 import { formatDuration } from '../lib/format.ts'
 import type { RecorderSupport } from '../recording/mediaRecorder.ts'
-import type { AudioRecordingMeta } from '../types.ts'
+import type { AudioRecordingMeta, TopicTimestamp } from '../types.ts'
 import type { RecorderUiState } from '../hooks/useRecorder.ts'
 
 interface RecordingControlsProps {
@@ -11,10 +12,12 @@ interface RecordingControlsProps {
   errorMessage: string | null
   canPause: boolean
   recordings: AudioRecordingMeta[]
+  topicTimestamps: TopicTimestamp[]
   playbackUrls: Record<string, string>
   onRecord: () => void
   onPause: () => void
-  onStopSave: () => void
+  onStop: () => void
+  onSave: () => void
   onNext: () => void
   onPrevious: () => void
   onRestart: () => void
@@ -30,11 +33,12 @@ function statusText(uiState: RecorderUiState, support: RecorderSupport): string 
   if (support === 'insecure-context') {
     return 'Nauhoitus vaatii localhostin tai HTTPS-yhteyden. Voit silti liittää tiedoston.'
   }
-  if (uiState === 'recording') return 'Nauhoitus käynnissä'
-  if (uiState === 'paused') return 'Nauhoitus tauolla'
+  if (uiState === 'recording') return 'Nauhoitus käynnissä. Aiheen vaihto ei katkaise ääntä.'
+  if (uiState === 'paused') return 'Nauhoitus tauolla. Kello ja nauha jatkuvat kun jatkat.'
+  if (uiState === 'pending') return 'Nauhoitus lopetettu. Tallenna nauha tälle laitteelle.'
   if (uiState === 'saving') return 'Tallennetaan nauhoitusta'
   if (uiState === 'error') return 'Nauhoituksessa tapahtui virhe'
-  return 'Valmis nauhoittamaan'
+  return 'Valmis nauhoittamaan. Yksi nauha voi kattaa koko haastattelun.'
 }
 
 export function RecordingControls({
@@ -44,10 +48,12 @@ export function RecordingControls({
   errorMessage,
   canPause,
   recordings,
+  topicTimestamps,
   playbackUrls,
   onRecord,
   onPause,
-  onStopSave,
+  onStop,
+  onSave,
   onNext,
   onPrevious,
   onRestart,
@@ -57,7 +63,8 @@ export function RecordingControls({
 }: RecordingControlsProps) {
   const recording = uiState === 'recording'
   const paused = uiState === 'paused'
-  const busy = recording || paused || uiState === 'saving'
+  const pending = uiState === 'pending'
+  const live = recording || paused
   const supported = support === 'supported'
 
   const handleUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -69,7 +76,7 @@ export function RecordingControls({
   return (
     <section className="controls" aria-labelledby="nauhoitus-otsikko">
       <div className="controls__head">
-        <h2 id="nauhoitus-otsikko">Nauhoitus ja siirtymät</h2>
+        <h2 id="nauhoitus-otsikko">Nauhoitus</h2>
         <p className="timer" aria-live="polite">
           {formatDuration(elapsedMs)}
         </p>
@@ -85,7 +92,7 @@ export function RecordingControls({
           type="button"
           className="btn btn--record"
           onClick={onRecord}
-          disabled={!supported || busy}
+          disabled={!supported || live || pending || uiState === 'saving'}
         >
           Nauhoita
         </button>
@@ -99,15 +106,23 @@ export function RecordingControls({
         </button>
         <button
           type="button"
-          className="btn btn--save"
-          onClick={onStopSave}
-          disabled={!supported || (!recording && !paused)}
+          className="btn"
+          onClick={onStop}
+          disabled={!supported || !live}
         >
-          Lopeta ja tallenna
+          Lopeta
+        </button>
+        <button
+          type="button"
+          className="btn btn--save"
+          onClick={onSave}
+          disabled={!supported || !pending}
+        >
+          Tallenna
         </button>
       </div>
 
-      <div className="button-row" role="group" aria-label="Kysymysten ohjaus">
+      <div className="button-row" role="group" aria-label="Aiheiden ohjaus">
         <button type="button" className="btn" onClick={onPrevious} disabled={isFirst}>
           Edellinen
         </button>
@@ -118,6 +133,9 @@ export function RecordingControls({
           Aloita alusta
         </button>
       </div>
+      <p className="controls__note">
+        Edellinen ja Seuraava vaihtavat vain ruudun aiheen. Ääni loppuu vain Lopeta-napista.
+      </p>
 
       <label className="upload">
         <span>Liitä äänitiedosto (varatapa)</span>
@@ -127,16 +145,32 @@ export function RecordingControls({
       <details className="shortcuts">
         <summary>Pikanäppäimet</summary>
         <p>
-          <kbd>R</kbd> nauhoita, <kbd>P</kbd> tauko, <kbd>S</kbd> tallenna, <kbd>←</kbd>/
-          <kbd>B</kbd> edellinen, <kbd>→</kbd>/<kbd>N</kbd> seuraava, <kbd>Alt</kbd>+<kbd>K</kbd>{' '}
-          alusta. Tekstikentässä käytä Alt-yhdistelmää.
+          <kbd>R</kbd> nauhoita, <kbd>P</kbd> tauko, <kbd>E</kbd> lopeta, <kbd>S</kbd> tallenna,{' '}
+          <kbd>←</kbd>/<kbd>B</kbd> edellinen, <kbd>→</kbd>/<kbd>N</kbd> seuraava,{' '}
+          <kbd>Alt</kbd>+<kbd>K</kbd> alusta. Tekstikentässä käytä Alt-yhdistelmää.
         </p>
       </details>
 
+      <section className="recordings" aria-labelledby="aihemerkit-otsikko">
+        <h3 id="aihemerkit-otsikko">Aihemerkit tällä nauhalla</h3>
+        {topicTimestamps.length === 0 ? (
+          <p>Ei vielä aihemerkkejä. Merkki syntyy, kun vaihdat aihetta nauhoituksen aikana.</p>
+        ) : (
+          <ol>
+            {topicTimestamps.map((stamp) => (
+              <li key={stamp.id}>
+                {formatDuration(stamp.offsetMs)} · nauha {stamp.tapeIndex + 1} ·{' '}
+                {QUESTIONS[stamp.questionIndex]?.label ?? stamp.questionId}
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+
       <section className="recordings" aria-labelledby="nauhahistoria-otsikko">
-        <h3 id="nauhahistoria-otsikko">Tämän kysymyksen nauhat</h3>
+        <h3 id="nauhahistoria-otsikko">Istunnon nauhat</h3>
         {recordings.length === 0 ? (
-          <p>Ei vielä nauhoituksia.</p>
+          <p>Ei vielä nauhoituksia. Yksi nauha voi sisältää koko kymmenen aiheen setin.</p>
         ) : (
           <ul>
             {recordings.map((item, index) => (
