@@ -304,6 +304,14 @@ svg {
   padding-left: 1.2rem;
 }
 
+.audio-save {
+  margin: 0 0 0.9rem;
+  padding: 0.75rem 0.8rem;
+  background: var(--bg-inset);
+  border: 3px solid var(--forest);
+  border-radius: 12px;
+}
+
 .audio-save h3 {
   margin: 0 0 0.4rem;
   font-size: 1.05rem;
@@ -322,13 +330,6 @@ svg {
 .recordings__item {
   display: grid;
   gap: 0.45rem;
-}
-
-.recordings ul,
-.recordings ol,
-.segments {
-  margin: 0;
-  padding-left: 1.2rem;
 }
 
 .question-panel .chat-followups,
