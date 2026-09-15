@@ -16,10 +16,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
   )
 
   useEffect(() => {
-    if (!telegramEnabled) {
-      setDecision({ status: 'allow', reason: 'web' })
-      return
-    }
+    if (!telegramEnabled) return
 
     let cancelled = false
 
