@@ -2,9 +2,20 @@ import { describe, expect, it } from 'vitest'
 import { decideAccess } from './access.ts'
 
 describe('decideAccess', () => {
+  it('päästää selaimen ilman Telegramia, kun Mini App on pois päältä', () => {
+    const decision = decideAccess({
+      isDev: false,
+      telegramEnabled: false,
+      allowedIds: ['42'],
+      hasTelegramUser: false,
+    })
+    expect(decision).toEqual({ status: 'allow', reason: 'web' })
+  })
+
   it('päästää Vilin Mini Appista, kun id on allowlistissä', () => {
     const decision = decideAccess({
       isDev: false,
+      telegramEnabled: true,
       allowedIds: ['42'],
       telegramUserId: 42,
       hasTelegramUser: true,
@@ -15,6 +26,7 @@ describe('decideAccess', () => {
   it('hylkää muut suomeksi ja näyttää id:n', () => {
     const decision = decideAccess({
       isDev: false,
+      telegramEnabled: true,
       allowedIds: ['42'],
       telegramUserId: 99,
       hasTelegramUser: true,
@@ -26,18 +38,20 @@ describe('decideAccess', () => {
     }
   })
 
-  it('sallii paikallisen devin ilman Telegramia', () => {
+  it('sallii paikallisen devin ilman Telegramia Mini App -tilassa', () => {
     const decision = decideAccess({
       isDev: true,
+      telegramEnabled: true,
       allowedIds: ['42'],
       hasTelegramUser: false,
     })
     expect(decision).toEqual({ status: 'allow', reason: 'dev-local' })
   })
 
-  it('estää tuotannon selaimen ilman Telegramia', () => {
+  it('estää tuotannon selaimen Mini App -tilassa ilman Telegramia', () => {
     const decision = decideAccess({
       isDev: false,
+      telegramEnabled: true,
       allowedIds: ['42'],
       hasTelegramUser: false,
     })
@@ -47,9 +61,10 @@ describe('decideAccess', () => {
     }
   })
 
-  it('vaatii allowlistin tuotannossa', () => {
+  it('vaatii allowlistin Mini App -tuotannossa', () => {
     const decision = decideAccess({
       isDev: false,
+      telegramEnabled: true,
       allowedIds: [],
       telegramUserId: 42,
       hasTelegramUser: true,

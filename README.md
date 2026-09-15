@@ -1,57 +1,24 @@
 # Perhemuistelot
 
-Telegram Mini App, jolla **Vili** haastattelee **Leenaa** ja **Jormaa** (s. 1957) puhelimen Telegramissa. Erillistä sovellusta ei avata.
+Selain-MVP, jolla **Vili** haastattelee **Leenaa** ja **Jormaa** (s. 1957). Avaa normaalissa selaimessa — Telegramia ei tarvita.
 
-Yksi yhteinen istunto. Vanhemmat juttelevat yhdessä — he eivät käytä ruutua. Ruudulla on yksi keskustelunaihe kerrallaan. **Seuraava** / **Edellinen** vaihtavat vain aiheen; Mini Appin ääni ei katkea.
+Yksi yhteinen istunto. Vanhemmat juttelevat yhdessä — he eivät käytä ruutua. Ruudulla on yksi keskustelunaihe kerrallaan. **Seuraava** / **Edellinen** vaihtavat vain aiheen; selaimen ääni ei katkea.
 
 Kymmenen pääkysymystä ovat täsmälleen [kysymykset.md](https://github.com/vili-pet/perhemuistelut)-tiedostosta. Niitä ei kirjoiteta uusiksi.
 
-Pääsy: vain Vilin Telegram-käyttäjä (`TELEGRAM_ALLOWED_USER_ID`). Muut saavat suomenkielisen hylkäyksen.
-
-## Telegram Mini App
-
-1. Luo botti [@BotFather](https://t.me/BotFather) komennolla `/newbot`. Saat `TELEGRAM_BOT_TOKEN`.
-2. Deployaa tämä repo Verceliin (HTTPS). Kopioi preview- tai production-URL.
-3. BotFather: `/newapp` tai `/setmenubutton` → Web App URL = Vercel-osoite (juuri, esim. `https://….vercel.app`).
-4. Hae oma numerinen id (`@userinfobot` tai botti kertoo sen hylkäysviestissä). Aseta se allowlistiin.
-5. Vercel Environment Variables:
-   - `TELEGRAM_BOT_TOKEN` (salaisuus, ei `VITE_`)
-   - `TELEGRAM_ALLOWED_USER_ID` (Vilin numerinen id)
-   - `VITE_TELEGRAM_ALLOWED_USER_ID` (sama id Mini Appin client-portille; ei salaisuus)
-   - `TELEGRAM_WEBAPP_URL` (sama HTTPS-osoite kuin BotFatherissa)
-   - valinnainen `TELEGRAM_WEBHOOK_SECRET`
-6. Kytke webhook (älä aja `npm run bot` samaan aikaan):
-
-```bash
-curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
-  -d "url=https://YOUR.vercel.app/api/telegram" \
-  -d "secret_token=$TELEGRAM_WEBHOOK_SECRET"
-```
-
-7. Telegramissa `/start` → **Avaa haastattelu**. Napit: nykyinen aihe, edellinen/seuraava, kiinnostava, palaa myöhemmin.
-
-Päänauha on Mini Appin **MediaRecorder**. Telegram-ääniviesti on varatapa; botti ei ota sitä, jos Mini App nauhoittaa jo.
+Tunnistautumista ei ole. `AccessGate` / Telegram-allowlist eivät ole oletuspolulla. Telegram on myöhempi, valinnainen kytkin (`VITE_TELEGRAM=1`).
 
 ## Käynnistys
 
 ```bash
 npm install
-cp .env.example .env   # täytä Telegram-kentät bottia varten
+cp .env.example .env   # valinnainen; Telegram-kenttiä ei tarvita MVP:hen
 npm run dev
 ```
 
-Avaa Vite-osoite selaimessa (yleensä `http://localhost:5173`). Paikallinen kehitys on sallittu ilman Telegramia. Nauhoitus toimii localhostissa ja HTTPS-ympäristössä.
+Avaa Vite-osoite selaimessa (yleensä `http://localhost:5173`). Nauhoitus toimii localhostissa ja HTTPS-ympäristössä.
 
-Botti (long poll, poista webhook ensin):
-
-```bash
-curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/deleteWebhook"
-npm run bot
-```
-
-Botti kuuntelee Telegramia ja tarjoaa paikallisen APIn `http://127.0.0.1:8787` (`/api/session`, `/api/telegram`, `/api/telegram-verify`). Vite proxyttaa `/api` sinne.
-
-Tuotantoversio:
+Tuotanto / tarkistukset:
 
 ```bash
 npm run typecheck
@@ -61,7 +28,7 @@ npm run build
 npm run preview
 ```
 
-Vercel ajaa `npm run build` (`tsc -b && vite build`), julkaisee `dist/` ja serverless-reitit `api/*.js` (botti webhook + istunto). TypeScript-virheet katkaisevat deployn.
+Vercel ajaa `npm run build` (`tsc -b && vite build`), julkaisee `dist/` ja serverless-reitit `api/*.js`. TypeScript-virheet katkaisevat deployn. Preview-URL aukeaa tavallisessa selaimessa ilman bottia.
 
 ## Putki
 
@@ -128,6 +95,43 @@ Nämä eivät ole pakollisia runtime-riippuvuuksia.
 
 - **Kysymys-/arkisto-API** (`VITE_QUESTIONS_API_URL`, `VITE_ARCHIVE_API_URL`, Bearer-avain): voi täydentää tukikysymyksiä. Paikalliset 10 kehotetta ovat kanonisia.
 - **Poke.com** `POST https://poke.com/api/v1/inbound/api-message` on **uloslähtevä muistutus** merkinnälle *palaa myöhemmin*. Se ei ole kysymys-API eikä palauta Q&A:ta. `VITE_POKE_API_KEY` on valinnainen.
+
+## Telegram myöhemmin (ei MVP)
+
+Oletus on `VITE_TELEGRAM=0` (tai muuttuja pois). Silloin `AccessGate` ei ole puussa, Telegram-skriptiä ei ladata, eikä botti-sync pollaa `/api/session`. Selain ja Vercel-preview toimivat ilman BotFather-tokenia ja allowlistiä.
+
+Jos Mini App halutaan myöhemmin:
+
+1. Aseta `VITE_TELEGRAM=1` (kytkee `AccessGate` + allowlistin).
+2. Luo botti [@BotFather](https://t.me/BotFather) komennolla `/newbot`. Saat `TELEGRAM_BOT_TOKEN`.
+3. Deployaa repo Verceliin (HTTPS). Kopioi preview- tai production-URL.
+4. BotFather: `/newapp` tai `/setmenubutton` → Web App URL = Vercel-osoite.
+5. Hae oma numerinen id (`@userinfobot`). Aseta se allowlistiin.
+6. Vercel Environment Variables:
+   - `VITE_TELEGRAM=1`
+   - `TELEGRAM_BOT_TOKEN` (salaisuus, ei `VITE_`)
+   - `TELEGRAM_ALLOWED_USER_ID` (Vilin numerinen id)
+   - `VITE_TELEGRAM_ALLOWED_USER_ID` (sama id Mini Appin client-portille; ei salaisuus)
+   - `TELEGRAM_WEBAPP_URL` (sama HTTPS-osoite kuin BotFatherissa)
+   - valinnainen `TELEGRAM_WEBHOOK_SECRET`
+7. Kytke webhook (älä aja `npm run bot` samaan aikaan):
+
+```bash
+curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
+  -d "url=https://YOUR.vercel.app/api/telegram" \
+  -d "secret_token=$TELEGRAM_WEBHOOK_SECRET"
+```
+
+Paikallinen botti (long poll, poista webhook ensin):
+
+```bash
+curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/deleteWebhook"
+npm run bot
+```
+
+Botti kuuntelee Telegramia ja tarjoaa paikallisen APIn `http://127.0.0.1:8787`. Vite proxyttaa `/api` sinne.
+
+Päänauha on silti selaimen **MediaRecorder**. Telegram-ääniviesti on varatapa; botti ei ota sitä, jos Mini App nauhoittaa jo.
 
 ## Saavutettavuus
 

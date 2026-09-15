@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { isTelegramEnabled } from './enabled.ts'
 import { getTelegramWebApp } from './webapp.ts'
 import type { QuestionMark } from '../types.ts'
 
@@ -80,6 +81,7 @@ export function useBotSync(input: {
   }, [input.onRemoteIndex, input.onRemoteMark, input.onRemoteVoices])
 
   useEffect(() => {
+    if (!isTelegramEnabled()) return
     const initData = getTelegramWebApp()?.initData
     const payload = {
       currentQuestionIndex: input.questionIndex,
@@ -104,6 +106,7 @@ export function useBotSync(input: {
   }, [input.mark, input.miniAppRecording, input.questionIndex])
 
   useEffect(() => {
+    if (!isTelegramEnabled()) return
     let cancelled = false
 
     async function pull() {

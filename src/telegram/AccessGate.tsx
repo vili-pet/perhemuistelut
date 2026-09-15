@@ -1,18 +1,31 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { clientAllowedUserIds } from './allowlist.ts'
 import { decideAccess, type AccessDecision } from './access.ts'
-import { bootstrapTelegramWebApp, getTelegramUser, getTelegramWebApp } from './webapp.ts'
+import { isTelegramEnabled } from './enabled.ts'
+import {
+  bootstrapTelegramWebApp,
+  getTelegramUser,
+  getTelegramWebApp,
+  loadTelegramWebAppScript,
+} from './webapp.ts'
 
 export function AccessGate({ children }: { children: ReactNode }) {
-  const [decision, setDecision] = useState<AccessDecision | { status: 'loading' }>({
-    status: 'loading',
-  })
+  const telegramEnabled = isTelegramEnabled()
+  const [decision, setDecision] = useState<AccessDecision | { status: 'loading' }>(() =>
+    telegramEnabled ? { status: 'loading' } : { status: 'allow', reason: 'web' },
+  )
 
   useEffect(() => {
-    bootstrapTelegramWebApp()
+    if (!telegramEnabled) {
+      setDecision({ status: 'allow', reason: 'web' })
+      return
+    }
+
     let cancelled = false
 
     async function resolveAccess() {
+      await loadTelegramWebAppScript()
+      bootstrapTelegramWebApp()
       const app = getTelegramWebApp()
       const user = getTelegramUser()
       const allowedIds = clientAllowedUserIds()
@@ -45,7 +58,12 @@ export function AccessGate({ children }: { children: ReactNode }) {
                 message:
                   body.message ||
                   'Tämä Mini App on vain Vilin haastattelutyökalu. Sinulla ei ole lupaa.',
-                userId: body.userId != null ? String(body.userId) : user?.id != null ? String(user.id) : undefined,
+                userId:
+                  body.userId != null
+                    ? String(body.userId)
+                    : user?.id != null
+                      ? String(user.id)
+                      : undefined,
               })
             }
             return
@@ -57,6 +75,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
 
       const local = decideAccess({
         isDev,
+        telegramEnabled: true,
         allowedIds,
         telegramUserId: user?.id,
         hasTelegramUser: Boolean(user?.id),
@@ -68,7 +87,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [telegramEnabled])
 
   if (decision.status === 'loading') {
     return (
@@ -98,8 +117,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
     <>
       {decision.reason === 'dev-local' ? (
         <p className="dev-banner" role="status">
-          Paikallinen kehitys ilman Telegram-istuntoa. Tuotannossa Mini App aukeaa vain Vilin
-          botista.
+          Paikallinen kehitys ilman Telegram-istuntoa. Mini App -portti on päällä (`VITE_TELEGRAM=1`).
         </p>
       ) : null}
       {children}

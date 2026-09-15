@@ -137,8 +137,7 @@ export function RecordingControls({
         <h2 id="nauha-lisat-otsikko">Nauhan tiedot</h2>
         <p className="controls__note">
           Edellinen ja Seuraava vaihtavat vain ruudun aiheen. Ääni loppuu vain Lopeta-napista.
-          Päänauha on Mini Appin MediaRecorder. Telegram-ääni on varatapa. Hedy ei nauhoita samaan
-          aikaan.
+          Päänauha on selaimen MediaRecorder. Hedy ei nauhoita samaan aikaan.
         </p>
 
         {pending || recordings.length > 0 ? (

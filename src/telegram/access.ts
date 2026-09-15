@@ -1,7 +1,7 @@
 import { isAllowedUserId } from './allowlist.ts'
 
 export type AccessDecision =
-  | { status: 'allow'; reason: 'telegram' | 'dev-local' }
+  | { status: 'allow'; reason: 'telegram' | 'dev-local' | 'web' }
   | { status: 'deny'; message: string; userId?: string }
 
 export function deniedMessage(userId?: string): string {
@@ -22,10 +22,15 @@ export function outsideTelegramMessage(): string {
 
 export function decideAccess(input: {
   isDev: boolean
+  telegramEnabled: boolean
   allowedIds: readonly string[]
   telegramUserId?: string | number
   hasTelegramUser: boolean
 }): AccessDecision {
+  if (!input.telegramEnabled) {
+    return { status: 'allow', reason: 'web' }
+  }
+
   const userId = input.telegramUserId == null ? undefined : String(input.telegramUserId)
 
   if (input.hasTelegramUser) {
