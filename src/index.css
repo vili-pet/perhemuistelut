@@ -596,16 +596,18 @@ kbd {
 .recording-dock__record,
 .recording-dock__nav {
   display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 0.45rem;
 }
 
-.recording-dock__record {
-  grid-template-columns: 1fr 1fr;
+.recording-dock__nav {
+  margin-top: 0.45rem;
 }
 
-.recording-dock__nav {
-  grid-template-columns: 1fr 1fr;
-  margin-top: 0.45rem;
+.recording-dock .btn {
+  white-space: normal;
+  line-height: 1.2;
+  font-size: 0.95rem;
 }
 
 .fact-chips,
@@ -658,16 +660,6 @@ kbd {
 .bookmark__tags,
 .bookmark__note {
   font-size: 0.9rem;
-}
-
-@media (min-width: 480px) {
-  .recording-dock__record {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  :root {
-    --dock-height: 13rem;
-  }
 }
 
 @media (min-width: 768px) {
