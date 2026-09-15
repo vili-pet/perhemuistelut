@@ -42,21 +42,30 @@ export interface TranscriptionResult {
 export interface TranscriptionWebhookPayload {
   event: 'transcription.requested'
   version: '1'
+  provider: 'hedy'
+  mode: 'post-process'
+  liveCapture: false
+  diarizationDraft: true
+  humanReviewRequired: true
   interviewId: string
   language: 'fi'
   callbackUrl: string
   audio: {
     blobRef?: string
+    fileRef?: string
     mimeType?: string
     durationMs?: number
     encodingHint: string
     continuousSession: true
   }
   topicTimestamps: TopicTimestamp[]
+  speakers: SpeakerHint[]
   facts: SessionFact[]
   questions: TranscriptionQuestionCue[]
   diarization: {
     enabled: true
+    diarizationDraft: true
+    humanReviewRequired: true
     minSpeakers: number
     maxSpeakers: number
     knownSpeakers: SpeakerHint[]

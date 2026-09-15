@@ -3,6 +3,10 @@ import { fetchQuestionsFromApi } from '../api/questionsSource.ts'
 import { buildPokeBookmarkPayload, isPokeConfigured, sendPokeBookmark } from '../api/poke.ts'
 import { SPEAKER_LABELS, respondentNamesWithYears } from '../data/participants.ts'
 import {
+  audioFileName,
+  downloadAudioBlob,
+} from '../export/audioDownload.ts'
+import {
   downloadJson,
   downloadText,
   exportFileName,
@@ -109,7 +113,9 @@ export function InterviewCockpit() {
   }, [])
 
   const persistRecording = useCallback(
-    async (meta: Omit<AudioRecordingMeta, 'id' | 'blobRef' | 'createdAt'> & { blob: Blob }) => {
+    async (
+      meta: Omit<AudioRecordingMeta, 'id' | 'blobRef' | 'createdAt'> & { blob: Blob },
+    ): Promise<AudioRecordingMeta> => {
       const id = createId('nauha')
       const createdAt = nowIso()
       await saveAudioClip({
@@ -118,7 +124,7 @@ export function InterviewCockpit() {
         mimeType: meta.mimeType,
         createdAt,
       })
-      interview.addRecording({
+      const saved: AudioRecordingMeta = {
         id,
         blobRef: id,
         createdAt,
@@ -127,27 +133,36 @@ export function InterviewCockpit() {
         sizeBytes: meta.blob.size,
         source: meta.source,
         fileName: meta.fileName,
-      })
+      }
+      interview.addRecording(saved)
       interview.harvestFacts()
-      setLiveMessage('Nauhoitus tallennettiin yhteiseen istuntoon.')
+      return saved
     },
     [interview],
   )
 
-  const handleRecord = useCallback(() => {
-    if (recorder.uiState === 'idle' || recorder.uiState === 'error') {
-      void recorder.start().then((ok) => {
-        if (ok) {
-          interview.markTopic({
-            offsetMs: 0,
-            tapeIndex: interview.session.recordings.length,
-          })
-          interview.markRecordingWindow()
-          setLiveMessage('Nauhoitus käynnissä. Aiheen vaihto ei katkaise ääntä.')
-        }
-      })
-    }
+  const beginRecording = useCallback(() => {
+    void recorder.start().then((ok) => {
+      if (ok) {
+        interview.markTopic({
+          offsetMs: 0,
+          tapeIndex: interview.session.recordings.length,
+        })
+        interview.markRecordingWindow()
+        setLiveMessage('Nauhoitus käynnissä. Aiheen vaihto ei katkaise ääntä. Hedy ei nauhoita samaan aikaan.')
+      }
+    })
   }, [interview, recorder])
+
+  const handleRecord = useCallback(() => {
+    if (recorder.uiState === 'pending') {
+      void recorder.save().then(() => beginRecording())
+      return
+    }
+    if (recorder.uiState === 'idle' || recorder.uiState === 'error') {
+      beginRecording()
+    }
+  }, [beginRecording, recorder])
 
   const handlePause = useCallback(() => {
     if (recorder.uiState === 'recording') {
@@ -162,28 +177,69 @@ export function InterviewCockpit() {
   }, [recorder])
 
   const handleStop = useCallback(() => {
-    void recorder.stop().then((result) => {
-      if (result) {
-        interview.harvestFacts()
-        setLiveMessage('Nauhoitus lopetettu. Paina Tallenna, jotta nauha jää tälle laitteelle.')
+    void recorder.stop().then(async (result) => {
+      if (!result) return
+      interview.harvestFacts()
+      try {
+        await persistRecording({
+          blob: result.blob,
+          mimeType: result.mimeType,
+          durationMs: result.durationMs,
+          source: 'media-recorder',
+        })
+        setLiveMessage(
+          'Nauhoitus lopetettu. Tallenna äänitiedosto koneelle tai puhelimeen — selaimen kopio ei yksin riitä.',
+        )
+      } catch {
+        setLiveMessage(
+          'Selainkopio epäonnistui. Tallenna äänitiedosto koneelle tai puhelimeen heti, jotta nauha ei katoa.',
+        )
       }
     })
-  }, [interview, recorder])
+  }, [interview, persistRecording, recorder])
 
-  const handleSave = useCallback(async () => {
-    const result = await recorder.save()
-    if (!result) return
-    try {
-      await persistRecording({
-        blob: result.blob,
-        mimeType: result.mimeType,
-        durationMs: result.durationMs,
-        source: 'media-recorder',
-      })
-    } catch {
-      setLiveMessage('Ääntä ei voitu tallentaa IndexedDB:hen. Muistiinpanot säilyvät.')
+  const downloadTapeById = useCallback(
+    async (recordingId: string) => {
+      const index = interview.session.recordings.findIndex((item) => item.id === recordingId)
+      const recording = interview.session.recordings[index]
+      if (!recording) {
+        setLiveMessage('Nauhaa ei löytynyt.')
+        return
+      }
+      try {
+        const clip = await getAudioClip(recording.blobRef)
+        if (!clip) {
+          setLiveMessage('Äänitiedostoa ei ole tällä selaimella. Jos latasit sen jo, se on koneella tai puhelimessa.')
+          return
+        }
+        downloadAudioBlob(audioFileName(interview.session, recording, index), clip.blob)
+        setLiveMessage('Äänitiedosto ladattiin koneelle tai puhelimeen.')
+      } catch {
+        setLiveMessage('Äänitiedoston lataus epäonnistui.')
+      }
+    },
+    [interview.session],
+  )
+
+  const handleDownloadSession = useCallback(async () => {
+    const pending = recorder.pending
+    if (pending) {
+      const matchingIndex = interview.session.recordings.findIndex(
+        (item) => item.mimeType === pending.mimeType && item.durationMs === pending.durationMs,
+      )
+      const tapeIndex = matchingIndex >= 0 ? matchingIndex : Math.max(0, interview.session.recordings.length - 1)
+      downloadAudioBlob(audioFileName(interview.session, pending, tapeIndex), pending.blob)
+      await recorder.save()
+      setLiveMessage('Äänitiedosto ladattiin koneelle tai puhelimeen. Vie se myöhemmin Hedyyn — ei live-nauhoitusta.')
+      return
     }
-  }, [persistRecording, recorder])
+    const latest = interview.session.recordings.at(-1)
+    if (!latest) {
+      setLiveMessage('Ei vielä äänitiedostoa. Lopeta nauhoitus ja tallenna tiedosto pois selaimesta.')
+      return
+    }
+    await downloadTapeById(latest.id)
+  }, [downloadTapeById, interview.session, recorder])
 
   const handleUpload = useCallback(
     async (file: File) => {
@@ -194,6 +250,9 @@ export function InterviewCockpit() {
           source: 'file-upload',
           fileName: file.name,
         })
+        setLiveMessage(
+          'Tiedosto liitettiin. Tallenna äänitiedosto koneelle tai puhelimeen — selaimen kopio ei yksin riitä.',
+        )
       } catch {
         setLiveMessage('Tiedoston liittäminen epäonnistui.')
       }
@@ -281,6 +340,10 @@ export function InterviewCockpit() {
   }, [interview])
 
   const handleTranscription = useCallback(async () => {
+    if (liveRecording) {
+      setLiveMessage('Nauhoitus on käynnissä. Hedy-pyyntö tehdään vasta keskustelun jälkeen.')
+      return
+    }
     const latest = interview.session.recordings.at(-1)
     let audioBlob: Blob | undefined
     if (latest) {
@@ -319,14 +382,14 @@ export function InterviewCockpit() {
     interview.harvestFacts()
     setAdapterMessage(result.message)
     setLiveMessage(result.message)
-  }, [adapter, interview])
+  }, [adapter, interview, liveRecording])
 
   useKeyboardShortcuts({
     onRecord: handleRecord,
     onPause: handlePause,
     onStop: handleStop,
     onSave: () => {
-      void handleSave()
+      void handleDownloadSession()
     },
     onNext: handleNext,
     onPrevious: handlePrevious,
@@ -346,8 +409,11 @@ export function InterviewCockpit() {
       onRecord={handleRecord}
       onPause={handlePause}
       onStop={handleStop}
-      onSave={() => {
-        void handleSave()
+      onDownloadSession={() => {
+        void handleDownloadSession()
+      }}
+      onDownloadTape={(recordingId) => {
+        void downloadTapeById(recordingId)
       }}
       onNext={handleNext}
       onPrevious={handlePrevious}
@@ -401,6 +467,7 @@ export function InterviewCockpit() {
             segments={interview.answer.segments}
             adapterName={adapter.name}
             adapterMessage={adapterMessage}
+            recordingLive={liveRecording}
             onNotesChange={interview.updateNotes}
             onTranscriptChange={interview.updateTranscript}
             onAddSegment={interview.addSegment}
@@ -431,8 +498,12 @@ export function InterviewCockpit() {
             updatedAt={formatClock(interview.session.updatedAt)}
             respondentNames={respondentNamesWithYears(interview.session.respondents)}
             factCount={interview.session.facts.length}
+            recordingCount={interview.session.recordings.length}
             onExportText={handleExportText}
             onExportJson={handleExportJson}
+            onDownloadAudio={() => {
+              void handleDownloadSession()
+            }}
           />
         </div>
       </main>

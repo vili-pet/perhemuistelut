@@ -8,6 +8,7 @@ interface TranscriptEditorProps {
   segments: SpeakerSegment[]
   adapterName: string
   adapterMessage?: string
+  recordingLive: boolean
   onNotesChange: (value: string) => void
   onTranscriptChange: (value: string) => void
   onAddSegment: (speaker?: SpeakerId) => void
@@ -23,6 +24,7 @@ export function TranscriptEditor({
   segments,
   adapterName,
   adapterMessage,
+  recordingLive,
   onNotesChange,
   onTranscriptChange,
   onAddSegment,
@@ -36,7 +38,7 @@ export function TranscriptEditor({
       <h2 id="tarina-otsikko">Tämän aiheen muistiinpanot</h2>
       <p className="editor__hint">
         Leena ja Jorma juttelevat yhdessä. Kirjoita vapaasti. Teksti tallentuu tälle laitteelle
-        automaattisesti. Äänitys on vapaaehtoinen.
+        automaattisesti. Äänitys on vapaaehtoinen — muista silti ladata äänitiedosto pois selaimesta.
       </p>
 
       <label className="field">
@@ -50,11 +52,15 @@ export function TranscriptEditor({
       </label>
 
       <details className="extra-tools">
-        <summary>Litterointi ja puhujajaksot (valinnainen)</summary>
+        <summary>Litterointi ja puhujajaksot (jälkikäsittely)</summary>
         <p className="editor__hint">
-          Adapteri: <strong>{adapterName}</strong>. Puhujat: Vili, Leena, Jorma tai Tuntematon.
-          Selainnauhoitus on lähde. Letterly ja Hedy kytketään vasta jälkeenpäin — ei live-webhookia
-          haastattelun aikana.
+          Adapteri: <strong>{adapterName}</strong>. Hedy on jälkikäsittely: asennettu Hedy-sovellus
+          ottaa äänitiedoston, ja valmiit litteroinnit palaavat API:sta tai webhookista. Hedya ei
+          tarvita haastattelun aikana, eikä haastattelua nauhoiteta Hedyssä samaan aikaan.
+        </p>
+        <p className="editor__hint" role="note">
+          Puhujatägit (Vili, Leena, Jorma, Tuntematon) ovat <strong>luonnos</strong>, kunnes Vili
+          tarkistaa ne. Diarisointi ei ole koskaan lopullinen.
         </p>
 
         <label className="field">
@@ -75,10 +81,21 @@ export function TranscriptEditor({
           <button type="button" className="btn" onClick={onMergeSegments}>
             Yhdistä jaksot litteraatiksi
           </button>
-          <button type="button" className="btn btn--ghost" onClick={onRequestTranscription}>
-            Valmistele litterointipyyntö
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={onRequestTranscription}
+            disabled={recordingLive}
+          >
+            Valmistele Hedy-pyyntö jälkeenpäin
           </button>
         </div>
+
+        {recordingLive ? (
+          <p className="status-line" role="status">
+            Nauhoitus on käynnissä. Hedy-pyyntö tehdään vasta keskustelun jälkeen.
+          </p>
+        ) : null}
 
         {adapterMessage ? (
           <p className="status-line" role="status">
@@ -91,7 +108,7 @@ export function TranscriptEditor({
             <li key={segment.id} className="segment">
               <div className="segment__meta">
                 <label>
-                  <span className="visually-hidden">Puhuja jaksossa {index + 1}</span>
+                  <span className="visually-hidden">Puhuja jaksossa {index + 1} (luonnos)</span>
                   <select
                     value={segment.speaker}
                     onChange={(event) =>
@@ -105,6 +122,7 @@ export function TranscriptEditor({
                     ))}
                   </select>
                 </label>
+                <span className="segment__draft">luonnos · Vili tarkistaa</span>
                 <button
                   type="button"
                   className="btn btn--tiny"

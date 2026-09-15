@@ -304,6 +304,33 @@ svg {
   padding-left: 1.2rem;
 }
 
+.audio-save h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+}
+
+.audio-save p {
+  margin: 0 0 0.65rem;
+}
+
+.segment__draft {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--forest);
+}
+
+.recordings__item {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.recordings ul,
+.recordings ol,
+.segments {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
 .question-panel .chat-followups,
 .question-panel ul {
   padding: 0;
@@ -362,6 +389,8 @@ svg {
 .btn--save {
   background: var(--forest);
   color: #fffaf1;
+  line-height: 1.15;
+  white-space: normal;
 }
 
 .btn--ghost {

@@ -1,6 +1,9 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  readonly VITE_HEDY_WEBHOOK_URL?: string
+  readonly VITE_HEDY_API_URL?: string
+  readonly VITE_HEDY_CALLBACK_URL?: string
   readonly VITE_TRANSCRIPTION_WEBHOOK_URL?: string
   readonly VITE_TRANSCRIPTION_CALLBACK_URL?: string
   readonly VITE_QUESTIONS_API_URL?: string

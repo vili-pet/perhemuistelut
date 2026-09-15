@@ -1,18 +1,33 @@
 import { describe, expect, it } from 'vitest'
 import { QUESTIONS } from '../data/questions.ts'
-import { PlaceholderTranscriptionAdapter } from './adapter.ts'
+import { PlaceholderTranscriptionAdapter, createTranscriptionAdapter } from './adapter.ts'
 import { buildWebhookPayload, exampleWebhookPayload, toSpeakerHints } from './payload.ts'
 
 describe('transcription webhook payload', () => {
   it('erottelee Vilin, Leenan, Jorman ja tuntemattoman sessiotauluun', () => {
     const payload = exampleWebhookPayload()
     expect(payload.event).toBe('transcription.requested')
+    expect(payload.provider).toBe('hedy')
+    expect(payload.mode).toBe('post-process')
+    expect(payload.liveCapture).toBe(false)
+    expect(payload.diarizationDraft).toBe(true)
+    expect(payload.humanReviewRequired).toBe(true)
     expect(payload.language).toBe('fi')
     expect(payload.audio.continuousSession).toBe(true)
+    expect(payload.audio.blobRef).toBe('nauhoitus-esimerkki')
+    expect(payload.audio.fileRef).toBe('nauhoitus-esimerkki')
     expect(payload.topicTimestamps.length).toBeGreaterThan(0)
+    expect(payload.speakers.map((speaker) => speaker.displayName)).toEqual([
+      'Vili',
+      'Leena',
+      'Jorma',
+      'Tuntematon',
+    ])
     expect(payload.facts[0]?.value).toBe('Simpele')
     expect(payload.questions).toHaveLength(QUESTIONS.length)
     expect(payload.diarization.enabled).toBe(true)
+    expect(payload.diarization.diarizationDraft).toBe(true)
+    expect(payload.diarization.humanReviewRequired).toBe(true)
     expect(payload.diarization.interviewerId).toBe('vili')
     expect(payload.diarization.respondentIds).toEqual(['leena', 'jorma'])
     expect(payload.diarization.labelUnknownAs).toBe('unknown')
@@ -24,7 +39,7 @@ describe('transcription webhook payload', () => {
     ])
   })
 
-  it('rakentaa adapterin kautta saman rajapinnan ilman live-kutsua', async () => {
+  it('rakentaa Hedy-paikka-adapterin ilman live-kutsua', async () => {
     const adapter = new PlaceholderTranscriptionAdapter()
     const request = {
       interviewId: 'haastattelu-1',
@@ -51,12 +66,21 @@ describe('transcription webhook payload', () => {
       })),
     }
     const result = await adapter.transcribe(request)
+    expect(adapter.name).toBe('hedy-placeholder')
     expect(result.status).toBe('placeholder')
     expect(result.segments).toEqual([])
+    expect(result.message).toContain('jälkikäsittely')
     expect(result.message).toContain('haastattelun aikana')
     const payload = adapter.buildWebhookPayload(request)
     expect(payload.interviewId).toBe('haastattelu-1')
+    expect(payload.provider).toBe('hedy')
+    expect(payload.diarizationDraft).toBe(true)
+    expect(payload.humanReviewRequired).toBe(true)
     expect(payload.topicTimestamps[0]?.questionId).toBe(QUESTIONS[0].id)
     expect(buildWebhookPayload(request).output.format).toBe('speaker-attributed-segments')
+  })
+
+  it('käyttää paikka-adapteria ilman Hedy-osoitetta', () => {
+    expect(createTranscriptionAdapter().name).toBe('hedy-placeholder')
   })
 })

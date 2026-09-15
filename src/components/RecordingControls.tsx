@@ -17,7 +17,8 @@ interface RecordingControlsProps {
   onRecord: () => void
   onPause: () => void
   onStop: () => void
-  onSave: () => void
+  onDownloadSession: () => void
+  onDownloadTape: (recordingId: string) => void
   onNext: () => void
   onPrevious: () => void
   onRestart: () => void
@@ -35,7 +36,9 @@ function statusText(uiState: RecorderUiState, support: RecorderSupport): string 
   }
   if (uiState === 'recording') return 'Nauhoitus käynnissä. Aiheen vaihto ei katkaise ääntä.'
   if (uiState === 'paused') return 'Nauhoitus tauolla. Kello ja nauha jatkuvat kun jatkat.'
-  if (uiState === 'pending') return 'Nauhoitus lopetettu. Tallenna nauha tälle laitteelle.'
+  if (uiState === 'pending') {
+    return 'Nauhoitus lopetettu. Tallenna äänitiedosto koneelle tai puhelimeen — selaimen kopio ei yksin riitä.'
+  }
   if (uiState === 'saving') return 'Tallennetaan nauhoitusta'
   if (uiState === 'error') return 'Nauhoituksessa tapahtui virhe'
   return 'Valmis nauhoittamaan. Yksi nauha voi kattaa koko haastattelun.'
@@ -53,7 +56,8 @@ export function RecordingControls({
   onRecord,
   onPause,
   onStop,
-  onSave,
+  onDownloadSession,
+  onDownloadTape,
   onNext,
   onPrevious,
   onRestart,
@@ -66,6 +70,7 @@ export function RecordingControls({
   const pending = uiState === 'pending'
   const live = recording || paused
   const supported = support === 'supported'
+  const canDownloadSession = pending || recordings.length > 0
 
   const handleUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -91,7 +96,7 @@ export function RecordingControls({
             type="button"
             className="btn btn--record"
             onClick={onRecord}
-            disabled={!supported || live || pending || uiState === 'saving'}
+            disabled={!supported || live || uiState === 'saving'}
           >
             Nauhoita
           </button>
@@ -109,10 +114,10 @@ export function RecordingControls({
           <button
             type="button"
             className="btn btn--save"
-            onClick={onSave}
-            disabled={!supported || !pending}
+            onClick={onDownloadSession}
+            disabled={!canDownloadSession || uiState === 'saving'}
           >
-            Tallenna
+            Tallenna äänitiedosto
           </button>
         </div>
         <div className="recording-dock__nav" role="group" aria-label="Aiheiden ohjaus">
@@ -129,7 +134,29 @@ export function RecordingControls({
         <h2 id="nauha-lisat-otsikko">Nauhan tiedot</h2>
         <p className="controls__note">
           Edellinen ja Seuraava vaihtavat vain ruudun aiheen. Ääni loppuu vain Lopeta-napista.
+          Hedy ei nauhoita samaan aikaan.
         </p>
+
+        {pending || recordings.length > 0 ? (
+          <div className="audio-save" role="region" aria-labelledby="aanitiedosto-otsikko">
+            <h3 id="aanitiedosto-otsikko">Tallenna äänitiedosto koneelle tai puhelimeen</h3>
+            <p>
+              Selain voi pitää kopion IndexedDB:ssä, mutta se ei yksin riitä. Lataa äänitiedosto
+              pois selaimesta jokaisen keskustelun päätteeksi. Vie se myöhemmin Hedyyn — ei live-nauhoitusta.
+            </p>
+            <div className="button-row">
+              <button
+                type="button"
+                className="btn btn--save"
+                onClick={onDownloadSession}
+                disabled={!canDownloadSession}
+              >
+                Tallenna äänitiedosto koneelle/puhelimeen
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         <div className="button-row">
           <button type="button" className="btn btn--ghost" onClick={onRestart}>
             Aloita alusta
@@ -144,8 +171,8 @@ export function RecordingControls({
         <details className="shortcuts">
           <summary>Pikanäppäimet</summary>
           <p>
-            <kbd>R</kbd> nauhoita, <kbd>P</kbd> tauko, <kbd>E</kbd> lopeta, <kbd>S</kbd> tallenna,{' '}
-            <kbd>←</kbd>/<kbd>B</kbd> edellinen, <kbd>→</kbd>/<kbd>N</kbd> seuraava,{' '}
+            <kbd>R</kbd> nauhoita, <kbd>P</kbd> tauko, <kbd>E</kbd> lopeta, <kbd>S</kbd> tallenna
+            äänitiedosto, <kbd>←</kbd>/<kbd>B</kbd> edellinen, <kbd>→</kbd>/<kbd>N</kbd> seuraava,{' '}
             <kbd>Alt</kbd>+<kbd>K</kbd> alusta. Tekstikentässä käytä Alt-yhdistelmää.
           </p>
         </details>
@@ -173,7 +200,7 @@ export function RecordingControls({
           ) : (
             <ul>
               {recordings.map((item, index) => (
-                <li key={item.id}>
+                <li key={item.id} className="recordings__item">
                   <p>
                     Nauha {index + 1} · {item.mimeType || 'ääni'} ·{' '}
                     {item.durationMs != null ? formatDuration(item.durationMs) : 'kesto tuntematon'}{' '}
@@ -184,8 +211,15 @@ export function RecordingControls({
                       Selaimesi ei toista ääntä.
                     </audio>
                   ) : (
-                    <p>Äänitiedostoa ei voitu avata tästä laitteesta.</p>
+                    <p>Äänitiedostoa ei voitu avata tästä selaimesta. Lataa se, jos se on tällä laitteella.</p>
                   )}
+                  <button
+                    type="button"
+                    className="btn btn--save"
+                    onClick={() => onDownloadTape(item.id)}
+                  >
+                    Tallenna äänitiedosto koneelle/puhelimeen
+                  </button>
                 </li>
               ))}
             </ul>
