@@ -1,9 +1,13 @@
 import { INTERVIEWER, RESPONDENTS } from '../data/participants.ts'
 import { QUESTIONS } from '../data/questions.ts'
+import { extractFactsFromAnswer, mergeFacts } from '../facts/extract.ts'
+import { personalizeFromFacts } from '../facts/personalize.ts'
 import { createId, nowIso } from '../lib/id.ts'
 import type {
   InterviewSession,
   QuestionAnswer,
+  QuestionMark,
+  SessionFact,
   TopicTimestamp,
 } from '../types.ts'
 
@@ -17,7 +21,7 @@ export interface TopicMarker {
   tapeIndex: number
 }
 
-export function emptyMark(): QuestionAnswer['mark'] {
+export function emptyMark(): QuestionMark {
   return {
     interesting: false,
     returnLater: false,
@@ -34,6 +38,7 @@ export function createEmptyAnswer(question: (typeof QUESTIONS)[number]): Questio
     notes: '',
     segments: [],
     mark: emptyMark(),
+    personalizedFollowUps: [],
   }
 }
 
@@ -50,6 +55,7 @@ export function createEmptySession(): InterviewSession {
     topicTimestamps: [],
     recordings: [],
     answers: QUESTIONS.map(createEmptyAnswer),
+    facts: [],
   }
 }
 
@@ -70,7 +76,6 @@ export function isInterviewSession(value: unknown): value is InterviewSession {
 }
 
 export function createTopicTimestamp(
-  session: InterviewSession,
   index: number,
   marker: TopicMarker,
 ): TopicTimestamp {
@@ -104,13 +109,16 @@ export function withQuestionIndex(
     return session
   }
 
-  return {
+  const nextSession: InterviewSession = {
     ...session,
     currentQuestionIndex: nextIndex,
     topicTimestamps: timestamps,
     answers,
     updatedAt: nowIso(),
   }
+
+  if (sameQuestion) return nextSession
+  return snapshotTopicAndPersonalize(nextSession, session.currentQuestionIndex, nextIndex)
 }
 
 function appendTopicTimestamp(
@@ -129,7 +137,7 @@ function appendTopicTimestamp(
     return session.topicTimestamps
   }
 
-  return [...session.topicTimestamps, createTopicTimestamp(session, index, marker)]
+  return [...session.topicTimestamps, createTopicTimestamp(index, marker)]
 }
 
 function stampAnswerWindow(
@@ -159,9 +167,11 @@ export function migrateSession(session: InterviewSession): InterviewSession {
     ...session,
     topicTimestamps: session.topicTimestamps ?? [],
     recordings: session.recordings ?? [],
+    facts: session.facts ?? [],
     answers: session.answers.map((answer) => ({
       ...answer,
       segments: answer.segments ?? [],
+      personalizedFollowUps: answer.personalizedFollowUps ?? [],
       mark: {
         interesting: Boolean(answer.mark?.interesting),
         returnLater: Boolean(answer.mark?.returnLater),
@@ -202,6 +212,107 @@ export function saveSession(session: InterviewSession): void {
 export function clearSession(): void {
   if (typeof localStorage === 'undefined') return
   localStorage.removeItem(STORAGE_KEY)
+}
+
+export function snapshotTopicAndPersonalize(
+  session: InterviewSession,
+  fromIndex: number,
+  toIndex: number,
+): InterviewSession {
+  const source = session.answers[fromIndex]
+  const extracted = source ? extractFactsFromAnswer(source) : []
+  const facts = mergeFacts(session.facts ?? [], extracted)
+  const dest = QUESTIONS[toIndex]
+  const personalized = dest ? personalizeFromFacts(facts, dest) : []
+
+  return {
+    ...session,
+    facts,
+    answers: session.answers.map((answer, index) =>
+      index === toIndex ? { ...answer, personalizedFollowUps: personalized } : answer,
+    ),
+    updatedAt: nowIso(),
+  }
+}
+
+export function withPersonalizedFollowUps(
+  session: InterviewSession,
+  questionIndex: number,
+  followUps: string[],
+): InterviewSession {
+  return {
+    ...session,
+    answers: session.answers.map((answer, index) =>
+      index === questionIndex ? { ...answer, personalizedFollowUps: followUps } : answer,
+    ),
+    updatedAt: nowIso(),
+  }
+}
+
+export function updateFactValue(
+  session: InterviewSession,
+  factId: string,
+  value: string,
+): InterviewSession {
+  return {
+    ...session,
+    facts: session.facts.map((fact) =>
+      fact.id === factId ? { ...fact, value: value.trim(), edited: true } : fact,
+    ),
+    updatedAt: nowIso(),
+  }
+}
+
+export function removeFact(session: InterviewSession, factId: string): InterviewSession {
+  return {
+    ...session,
+    facts: session.facts.filter((fact) => fact.id !== factId),
+    updatedAt: nowIso(),
+  }
+}
+
+export function addManualFact(
+  session: InterviewSession,
+  input: Pick<SessionFact, 'kind' | 'key' | 'label' | 'value'>,
+): InterviewSession {
+  const fact: SessionFact = {
+    id: createId('fakta'),
+    kind: input.kind,
+    key: input.key,
+    label: input.label,
+    value: input.value.trim(),
+    createdAt: nowIso(),
+    edited: true,
+  }
+  if (!fact.value) return session
+  return {
+    ...session,
+    facts: mergeFacts(session.facts, [fact]),
+    updatedAt: nowIso(),
+  }
+}
+
+export function patchAnswerMark(
+  session: InterviewSession,
+  index: number,
+  patch: Partial<QuestionMark>,
+): InterviewSession {
+  return {
+    ...session,
+    updatedAt: nowIso(),
+    answers: session.answers.map((answer, answerIndex) =>
+      answerIndex === index
+        ? {
+            ...answer,
+            mark: {
+              ...answer.mark,
+              ...patch,
+              updatedAt: nowIso(),
+            },
+          }
+        : answer,
+    ),
+  }
 }
 
 export function listBlobRefs(session: InterviewSession): string[] {

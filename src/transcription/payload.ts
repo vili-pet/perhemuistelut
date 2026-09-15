@@ -36,6 +36,7 @@ export function buildWebhookPayload(
       continuousSession: true,
     },
     topicTimestamps: request.topicTimestamps,
+    facts: request.facts,
     questions: request.questions,
     diarization: {
       enabled: true,
@@ -81,11 +82,24 @@ export function exampleWebhookPayload(): TranscriptionWebhookPayload {
         tapeIndex: 0,
       },
     ],
+    facts: [
+      {
+        id: 'fakta-1',
+        kind: 'place',
+        key: 'syntymäpaikka',
+        label: 'Syntymäpaikka',
+        value: 'Simpele',
+        sourceQuestionId: QUESTIONS[2].id,
+        createdAt: '2026-09-15T12:08:00.000Z',
+      },
+    ],
     questions: QUESTIONS.map((question, index) => ({
       id: question.id,
       question: question.question,
       theme: question.theme,
       cueOffsetMs: index === 1 ? 421000 : index === 0 ? 0 : undefined,
+      personalizedFollowUps:
+        index === 2 ? ['Minä vuonna muutitte pois Simpeleeltä?'] : [],
     })),
   })
 }

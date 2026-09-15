@@ -28,6 +28,9 @@ describe('interviewStorage', () => {
     expect(session.answers).toHaveLength(QUESTIONS.length)
     expect(session.recordings).toEqual([])
     expect(session.topicTimestamps).toEqual([])
+    expect(session.facts).toEqual([])
+    expect(session.answers[0]?.mark.interesting).toBe(false)
+    expect(session.answers[0]?.personalizedFollowUps).toEqual([])
     expect(session.answers[0]?.transcript).toContain('Litterointi')
   })
 
@@ -102,6 +105,16 @@ describe('interviewStorage', () => {
     expect(back.recordings).toEqual(next.recordings)
     expect(back.topicTimestamps).toHaveLength(2)
     expect(back.currentQuestionIndex).toBe(0)
+  })
+
+  it('poimii faktat edellisestä aiheesta kun aihe vaihtuu', () => {
+    const session = createEmptySession()
+    session.answers[0].notes = 'Synnyin Simpeleellä vuonna 1957.'
+    const next = withQuestionIndex(session, 1)
+    expect(next.recordings).toEqual([])
+    expect(next.facts.some((fact) => fact.value === 'Simpele')).toBe(true)
+    expect(next.answers[1]?.personalizedFollowUps.length).toBeGreaterThan(0)
+    expect(next.answers[1]?.personalizedFollowUps).not.toContain(QUESTIONS[1].question)
   })
 
   it('withQuestionIndex ilman merkkiä vaihtaa aiheen eikä koske nauhoihin', () => {

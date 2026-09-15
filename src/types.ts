@@ -73,6 +73,20 @@ export interface QuestionMark {
   pokeSentAt?: string
 }
 
+export const FACT_KINDS = ['place', 'year', 'name', 'job', 'first', 'other'] as const
+export type FactKind = (typeof FACT_KINDS)[number]
+
+export interface SessionFact {
+  id: string
+  kind: FactKind
+  key: string
+  label: string
+  value: string
+  sourceQuestionId?: string
+  createdAt: string
+  edited?: boolean
+}
+
 export interface QuestionAnswer {
   questionId: string
   question: string
@@ -84,6 +98,7 @@ export interface QuestionAnswer {
   notes: string
   segments: SpeakerSegment[]
   mark: QuestionMark
+  personalizedFollowUps: string[]
 }
 
 export interface InterviewSession {
@@ -97,6 +112,7 @@ export interface InterviewSession {
   topicTimestamps: TopicTimestamp[]
   recordings: AudioRecordingMeta[]
   answers: QuestionAnswer[]
+  facts: SessionFact[]
 }
 
 export interface FamilyHistoryExport {
@@ -111,6 +127,7 @@ export interface FamilyHistoryExport {
     continuousRecording: true
     audio: AudioRecordingMeta[]
     topicTimestamps: TopicTimestamp[]
+    facts: SessionFact[]
     questions: Array<{
       id: string
       theme: string
@@ -118,6 +135,7 @@ export interface FamilyHistoryExport {
       label: string
       question: string
       followUps: string[]
+      personalizedFollowUps: string[]
       recordedAt: {
         startedAt?: string
         endedAt?: string

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { fetchQuestionsFromApi } from '../api/questionsSource.ts'
+import { buildPokeBookmarkPayload, isPokeConfigured, sendPokeBookmark } from '../api/poke.ts'
 import { SPEAKER_LABELS, respondentNamesWithYears } from '../data/participants.ts'
 import {
   downloadJson,
@@ -17,10 +19,13 @@ import type { TopicMarker } from '../storage/interviewStorage.ts'
 import { createTranscriptionAdapter } from '../transcription/adapter.ts'
 import { toSpeakerHints } from '../transcription/payload.ts'
 import type { AudioRecordingMeta } from '../types.ts'
+import { BookmarkList } from './BookmarkList.tsx'
 import { ExportPanel } from './ExportPanel.tsx'
+import { FactBank } from './FactBank.tsx'
 import { ProgressHeader } from './ProgressHeader.tsx'
 import { QuestionPanel } from './QuestionPanel.tsx'
 import { RecordingControls } from './RecordingControls.tsx'
+import { TopicMarks } from './TopicMarks.tsx'
 import { TranscriptEditor } from './TranscriptEditor.tsx'
 
 function revokeAll(urls: Record<string, string>) {
@@ -37,8 +42,11 @@ export function InterviewCockpit() {
   const [playbackUrls, setPlaybackUrls] = useState<Record<string, string>>({})
   const [adapterMessage, setAdapterMessage] = useState<string>()
   const [liveMessage, setLiveMessage] = useState('Valmis kirjaamaan tarinaa.')
+  const [pokeMessage, setPokeMessage] = useState<string>()
+  const [extraFollowUps, setExtraFollowUps] = useState<string[]>([])
 
   const liveRecording = recorder.uiState === 'recording' || recorder.uiState === 'paused'
+  const pokeConfigured = isPokeConfigured()
 
   const topicMarker = useCallback((): TopicMarker | undefined => {
     if (!liveRecording) return undefined
@@ -47,6 +55,21 @@ export function InterviewCockpit() {
       tapeIndex: interview.session.recordings.length,
     }
   }, [interview.session.recordings.length, liveRecording, recorder.elapsedMs])
+
+  useEffect(() => {
+    let cancelled = false
+    void fetchQuestionsFromApi().then((result) => {
+      if (cancelled) return
+      const match = result.questions.find((item) => item.id === interview.question.id)
+      const extras = (match?.followUps ?? []).filter(
+        (item) => !interview.question.followUps.includes(item),
+      )
+      setExtraFollowUps(extras)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [interview.question.followUps, interview.question.id])
 
   useEffect(() => {
     let cancelled = false
@@ -202,6 +225,25 @@ export function InterviewCockpit() {
     [interview, liveRecording, topicMarker],
   )
 
+  const handleSendPoke = useCallback(async () => {
+    interview.updateMark({ returnLater: true })
+    const result = await sendPokeBookmark(
+      buildPokeBookmarkPayload({
+        session: interview.session,
+        question: interview.question,
+        answer: {
+          ...interview.answer,
+          mark: { ...interview.answer.mark, returnLater: true },
+        },
+      }),
+    )
+    setPokeMessage(result.message)
+    setLiveMessage(result.message)
+    if (result.ok) {
+      interview.updateMark({ pokeSentAt: nowIso(), returnLater: true })
+    }
+  }, [interview])
+
   const openRestart = useCallback(() => {
     dialogRef.current?.showModal()
   }, [])
@@ -211,6 +253,7 @@ export function InterviewCockpit() {
     await recorder.discard()
     await interview.restart()
     setAdapterMessage(undefined)
+    setPokeMessage(undefined)
     setLiveMessage('Yhteinen haastattelu tyhjennettiin.')
   }, [interview, recorder])
 
@@ -257,11 +300,13 @@ export function InterviewCockpit() {
       speakers: toSpeakerHints(),
       diarization: true,
       topicTimestamps: interview.session.topicTimestamps,
+      facts: interview.session.facts,
       questions: interview.session.answers.map((item) => ({
         id: item.questionId,
         question: item.question,
         theme: item.theme,
         cueOffsetMs: item.cueOffsetMs,
+        personalizedFollowUps: item.personalizedFollowUps,
       })),
     })
 
@@ -285,6 +330,33 @@ export function InterviewCockpit() {
     onRestart: openRestart,
   })
 
+  const recordingControls = (
+    <RecordingControls
+      support={recorder.support}
+      uiState={recorder.uiState}
+      elapsedMs={recorder.elapsedMs}
+      errorMessage={recorder.errorMessage}
+      canPause={recorder.canPause}
+      recordings={interview.session.recordings}
+      topicTimestamps={interview.session.topicTimestamps}
+      playbackUrls={playbackUrls}
+      onRecord={handleRecord}
+      onPause={handlePause}
+      onStop={handleStop}
+      onSave={() => {
+        void handleSave()
+      }}
+      onNext={handleNext}
+      onPrevious={handlePrevious}
+      onRestart={openRestart}
+      onUpload={(file) => {
+        void handleUpload(file)
+      }}
+      isFirst={interview.isFirst}
+      isLast={interview.isLast}
+    />
+  )
+
   return (
     <div className="cockpit">
       <a className="skip-link" href="#sisalto">
@@ -295,6 +367,7 @@ export function InterviewCockpit() {
         respondents={interview.session.respondents}
         questionIndex={interview.questionIndex}
         questionCount={interview.questionCount}
+        answers={interview.session.answers}
         onGoTo={handleGoTo}
       />
 
@@ -304,34 +377,21 @@ export function InterviewCockpit() {
 
       <main id="sisalto" className="layout">
         <div className="layout__primary">
-          <QuestionPanel question={interview.question} index={interview.questionIndex} />
-          <RecordingControls
-            support={recorder.support}
-            uiState={recorder.uiState}
-            elapsedMs={recorder.elapsedMs}
-            errorMessage={recorder.errorMessage}
-            canPause={recorder.canPause}
-            recordings={interview.session.recordings}
-            topicTimestamps={interview.session.topicTimestamps}
-            playbackUrls={playbackUrls}
-            onRecord={handleRecord}
-            onPause={handlePause}
-            onStop={handleStop}
-            onSave={() => {
-              void handleSave()
-            }}
-            onNext={handleNext}
-            onPrevious={handlePrevious}
-            onRestart={openRestart}
-            onUpload={(file) => {
-              void handleUpload(file)
-            }}
-            isFirst={interview.isFirst}
-            isLast={interview.isLast}
+          <QuestionPanel
+            question={interview.question}
+            index={interview.questionIndex}
+            extraFollowUps={extraFollowUps}
+            personalizedFollowUps={interview.answer.personalizedFollowUps}
           />
-        </div>
-
-        <div className="layout__side">
+          <TopicMarks
+            mark={interview.answer.mark}
+            pokeConfigured={pokeConfigured}
+            pokeMessage={pokeMessage}
+            onChange={interview.updateMark}
+            onSendPoke={() => {
+              void handleSendPoke()
+            }}
+          />
           <TranscriptEditor
             notes={interview.answer.notes}
             transcript={interview.answer.transcript}
@@ -348,10 +408,26 @@ export function InterviewCockpit() {
             }}
             onMergeSegments={handleMergeSegments}
           />
+        </div>
+
+        <div className="layout__side">
+          <BookmarkList
+            answers={interview.session.answers}
+            currentIndex={interview.questionIndex}
+            onJump={handleGoTo}
+          />
+          <FactBank
+            facts={interview.session.facts}
+            onEdit={interview.editFact}
+            onRemove={interview.deleteFact}
+            onAdd={interview.addFact}
+          />
+          {recordingControls}
           <ExportPanel
             interviewId={interview.session.id}
             updatedAt={formatClock(interview.session.updatedAt)}
             respondentNames={respondentNamesWithYears(interview.session.respondents)}
+            factCount={interview.session.facts.length}
             onExportText={handleExportText}
             onExportJson={handleExportJson}
           />

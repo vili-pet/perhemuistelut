@@ -2,6 +2,7 @@ interface ExportPanelProps {
   interviewId: string
   updatedAt: string
   respondentNames: string
+  factCount: number
   onExportText: () => void
   onExportJson: () => void
 }
@@ -10,6 +11,7 @@ export function ExportPanel({
   interviewId,
   updatedAt,
   respondentNames,
+  factCount,
   onExportText,
   onExportJson,
 }: ExportPanelProps) {
@@ -22,7 +24,8 @@ export function ExportPanel({
       </p>
       <p>
         Ottakaa kopio tiedostona, jos haluatte varmuuskopion pois selaimesta. JSON sisältää
-        aihemerkit ja äänimetatiedot, mutta ei äänibittiä.
+        aihemerkit, faktapankin ({factCount} faktaa), henkilökohtaiset tukikysymykset ja
+        äänimetatiedot, mutta ei äänibittiä.
       </p>
       <p className="export__meta">
         Istunto <code>{interviewId}</code>

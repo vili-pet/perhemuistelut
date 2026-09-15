@@ -20,6 +20,7 @@ export function toFamilyHistoryExport(session: InterviewSession): FamilyHistoryE
       continuousRecording: true,
       audio: session.recordings,
       topicTimestamps: session.topicTimestamps,
+      facts: session.facts,
       questions: session.answers.map((answer) => {
         const definition = getQuestionById(answer.questionId)
         return {
@@ -29,6 +30,7 @@ export function toFamilyHistoryExport(session: InterviewSession): FamilyHistoryE
           label: definition?.label ?? answer.theme,
           question: answer.question,
           followUps: definition?.followUps ?? [],
+          personalizedFollowUps: answer.personalizedFollowUps,
           recordedAt: {
             startedAt: answer.startedAt,
             endedAt: answer.endedAt,
@@ -40,6 +42,7 @@ export function toFamilyHistoryExport(session: InterviewSession): FamilyHistoryE
             segments: answer.segments,
           },
           notes: answer.notes,
+          mark: answer.mark,
         }
       }),
     },
@@ -99,6 +102,14 @@ export function toStoriesText(session: InterviewSession): string {
     lines.push('')
   }
 
+  if (session.facts.length > 0) {
+    lines.push('Faktapankki:')
+    for (const fact of session.facts) {
+      lines.push(`- ${fact.label}: ${fact.value}`)
+    }
+    lines.push('')
+  }
+
   for (const [index, answer] of session.answers.entries()) {
     if (!answerHasContent(answer)) continue
     lines.push(`${index + 1}. ${answer.theme}`)
@@ -107,6 +118,13 @@ export function toStoriesText(session: InterviewSession): string {
     if (answer.notes.trim()) {
       lines.push('Tarina:')
       lines.push(answer.notes.trim())
+      lines.push('')
+    }
+    if (answer.personalizedFollowUps?.length) {
+      lines.push('Henkilökohtaiset tukikysymykset:')
+      for (const followUp of answer.personalizedFollowUps) {
+        lines.push(`- ${followUp}`)
+      }
       lines.push('')
     }
     if (

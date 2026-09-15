@@ -1,4 +1,4 @@
-import type { Person, SpeakerId, SpeakerSegment, TopicTimestamp } from '../types.ts'
+import type { Person, SessionFact, SpeakerId, SpeakerSegment, TopicTimestamp } from '../types.ts'
 
 export type TranscriptionStatus = 'placeholder' | 'queued' | 'completed' | 'failed'
 
@@ -14,6 +14,7 @@ export interface TranscriptionQuestionCue {
   question: string
   theme: string
   cueOffsetMs?: number
+  personalizedFollowUps?: string[]
 }
 
 export interface TranscriptionRequest {
@@ -26,6 +27,7 @@ export interface TranscriptionRequest {
   speakers: SpeakerHint[]
   diarization: true
   topicTimestamps: TopicTimestamp[]
+  facts: SessionFact[]
   questions: TranscriptionQuestionCue[]
 }
 
@@ -51,6 +53,7 @@ export interface TranscriptionWebhookPayload {
     continuousSession: true
   }
   topicTimestamps: TopicTimestamp[]
+  facts: SessionFact[]
   questions: TranscriptionQuestionCue[]
   diarization: {
     enabled: true

@@ -10,6 +10,7 @@ describe('transcription webhook payload', () => {
     expect(payload.language).toBe('fi')
     expect(payload.audio.continuousSession).toBe(true)
     expect(payload.topicTimestamps.length).toBeGreaterThan(0)
+    expect(payload.facts[0]?.value).toBe('Simpele')
     expect(payload.questions).toHaveLength(QUESTIONS.length)
     expect(payload.diarization.enabled).toBe(true)
     expect(payload.diarization.interviewerId).toBe('vili')
@@ -42,6 +43,7 @@ describe('transcription webhook payload', () => {
           tapeIndex: 0,
         },
       ],
+      facts: [],
       questions: QUESTIONS.map((question) => ({
         id: question.id,
         question: question.question,

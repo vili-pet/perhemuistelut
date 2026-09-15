@@ -1,11 +1,12 @@
 import { respondentNamesWithYears } from '../data/participants.ts'
 import { QUESTIONS } from '../data/questions.ts'
-import type { Person } from '../types.ts'
+import type { Person, QuestionAnswer } from '../types.ts'
 
 interface ProgressHeaderProps {
   respondents: Person[]
   questionIndex: number
   questionCount: number
+  answers: QuestionAnswer[]
   onGoTo: (index: number) => void
 }
 
@@ -13,6 +14,7 @@ export function ProgressHeader({
   respondents,
   questionIndex,
   questionCount,
+  answers,
   onGoTo,
 }: ProgressHeaderProps) {
   const percent = ((questionIndex + 1) / questionCount) * 100
@@ -35,6 +37,7 @@ export function ProgressHeader({
       <div className="progress-block">
         <div className="progress-block__label" id="eteneminen-label">
           Aihe {questionIndex + 1} / {questionCount}
+          <span className="progress-block__now"> · {QUESTIONS[questionIndex].label}</span>
         </div>
         <div
           className="progress"
@@ -48,18 +51,27 @@ export function ProgressHeader({
           <div className="progress__bar" style={{ width: `${percent}%` }} />
         </div>
         <nav className="progress-nav" aria-label="Siirry aiheeseen">
-          {QUESTIONS.map((question, index) => (
-            <button
-              key={question.id}
-              type="button"
-              className={index === questionIndex ? 'step step--current' : 'step'}
-              aria-current={index === questionIndex ? 'step' : undefined}
-              onClick={() => onGoTo(index)}
-            >
-              <span className="step__num">{index + 1}</span>
-              <span className="step__theme">{question.label}</span>
-            </button>
-          ))}
+          {QUESTIONS.map((question, index) => {
+            const mark = answers[index]?.mark
+            const flagged = Boolean(mark?.interesting || mark?.returnLater)
+            return (
+              <button
+                key={question.id}
+                type="button"
+                className={index === questionIndex ? 'step step--current' : 'step'}
+                aria-current={index === questionIndex ? 'step' : undefined}
+                onClick={() => onGoTo(index)}
+              >
+                <span className="step__num">{index + 1}</span>
+                <span className="step__theme">{question.label}</span>
+                {flagged ? (
+                  <span className="step__flag">
+                    {mark?.returnLater ? 'Palaa' : 'Kiinnostava'}
+                  </span>
+                ) : null}
+              </button>
+            )
+          })}
         </nav>
       </div>
     </header>
