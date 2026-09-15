@@ -16,7 +16,7 @@
   --ui: 'Avenir Next', 'Segoe UI', 'Helvetica Neue', sans-serif;
   --space: 0.9rem;
   --tap: 2.75rem;
-  --dock-height: 12.75rem;
+  --dock-height: 16.5rem;
 }
 
 *,
@@ -636,7 +636,7 @@ kbd {
   }
 
   :root {
-    --dock-height: 10.5rem;
+    --dock-height: 13rem;
   }
 }
 
