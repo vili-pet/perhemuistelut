@@ -1,4 +1,4 @@
-import type { Person } from '../types.ts'
+import type { Person, RespondentId } from '../types.ts'
 
 export const INTERVIEWER: Person = {
   id: 'vili',
@@ -34,4 +34,20 @@ export const SPEAKER_LABELS: Record<Person['id'], string> = {
   leena: 'Leena',
   jorma: 'Jorma',
   unknown: 'Tuntematon',
+}
+
+export function isRespondentId(value: string | null | undefined): value is RespondentId {
+  return value === 'leena' || value === 'jorma'
+}
+
+export function getRespondent(id: RespondentId): Person {
+  const person = RESPONDENTS.find((item) => item.id === id)
+  if (!person) {
+    throw new Error(`Tuntematon haastateltava: ${id}`)
+  }
+  return person
+}
+
+export function genitiveName(name: string): string {
+  return `${name}n`
 }

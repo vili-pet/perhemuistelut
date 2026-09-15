@@ -16,24 +16,23 @@ export function QuestionPanel({ question, index }: QuestionPanelProps) {
         {question.question}
       </h2>
 
-      <div className="prompt-grid">
-        <section aria-labelledby="tukikysymykset-otsikko">
-          <h3 id="tukikysymykset-otsikko">Tukikysymykset</h3>
-          <ul>
-            {question.prompts.map((prompt) => (
-              <li key={prompt}>{prompt}</li>
-            ))}
-          </ul>
-        </section>
-        <section aria-labelledby="jatkot-otsikko">
-          <h3 id="jatkot-otsikko">Jatko-ohjeet Vilille</h3>
-          <ul>
-            {question.followUps.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </section>
-      </div>
+      <section aria-labelledby="tukikysymykset-otsikko">
+        <h3 id="tukikysymykset-otsikko">Voitte jatkaa näillä</h3>
+        <ul>
+          {question.prompts.map((prompt) => (
+            <li key={prompt}>{prompt}</li>
+          ))}
+        </ul>
+      </section>
+
+      <details className="follow-ups">
+        <summary>Jatko-ohjeet Vilille</summary>
+        <ul>
+          {question.followUps.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </details>
     </section>
   )
 }

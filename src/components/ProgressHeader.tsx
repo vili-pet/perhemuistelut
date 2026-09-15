@@ -1,23 +1,36 @@
+import { genitiveName } from '../data/participants.ts'
 import { QUESTIONS } from '../data/questions.ts'
+import type { Person } from '../types.ts'
 
 interface ProgressHeaderProps {
+  respondent: Person
   questionIndex: number
   questionCount: number
   onGoTo: (index: number) => void
+  onChangePerson: () => void
 }
 
-export function ProgressHeader({ questionIndex, questionCount, onGoTo }: ProgressHeaderProps) {
+export function ProgressHeader({
+  respondent,
+  questionIndex,
+  questionCount,
+  onGoTo,
+  onChangePerson,
+}: ProgressHeaderProps) {
   const percent = ((questionIndex + 1) / questionCount) * 100
 
   return (
     <header className="masthead">
       <div className="masthead__brand">
         <p className="eyebrow">Perhemuistelut</p>
-        <h1>Haastatteluohjaamo</h1>
+        <h1>{genitiveName(respondent.name)} tarinat</h1>
         <p className="masthead__people">
-          Haastattelija <strong>Vili</strong> · Vastaajat <strong>Leena</strong> ja{' '}
-          <strong>Jorma</strong> (s. 1957)
+          Haastateltava <strong>{respondent.name}</strong> (s. {respondent.birthYear}) ·
+          Haastattelija <strong>Vili</strong>
         </p>
+        <button type="button" className="btn btn--ghost masthead__switch" onClick={onChangePerson}>
+          Vaihda haastateltavaa
+        </button>
       </div>
 
       <div className="progress-block">

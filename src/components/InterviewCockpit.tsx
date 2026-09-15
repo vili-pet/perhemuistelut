@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SPEAKER_LABELS } from '../data/participants.ts'
-import { downloadJson, exportFileName } from '../export/familyHistory.ts'
+import {
+  downloadJson,
+  downloadText,
+  exportFileName,
+  storiesFileName,
+  toStoriesText,
+} from '../export/familyHistory.ts'
 import { useInterview } from '../hooks/useInterview.ts'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts.ts'
 import { useRecorder } from '../hooks/useRecorder.ts'
@@ -9,7 +15,7 @@ import { formatClock } from '../lib/format.ts'
 import { createObjectUrl, getAudioClip, saveAudioClip } from '../storage/audioStore.ts'
 import { createTranscriptionAdapter } from '../transcription/adapter.ts'
 import { toSpeakerHints } from '../transcription/payload.ts'
-import type { AudioRecordingMeta } from '../types.ts'
+import type { AudioRecordingMeta, RespondentId } from '../types.ts'
 import { ExportPanel } from './ExportPanel.tsx'
 import { ProgressHeader } from './ProgressHeader.tsx'
 import { QuestionPanel } from './QuestionPanel.tsx'
@@ -22,14 +28,19 @@ function revokeAll(urls: Record<string, string>) {
   }
 }
 
-export function InterviewCockpit() {
-  const interview = useInterview()
+interface InterviewCockpitProps {
+  personId: RespondentId
+  onChangePerson: () => void
+}
+
+export function InterviewCockpit({ personId, onChangePerson }: InterviewCockpitProps) {
+  const interview = useInterview(personId)
   const recorder = useRecorder()
   const adapter = useMemo(() => createTranscriptionAdapter(), [])
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [playbackUrls, setPlaybackUrls] = useState<Record<string, string>>({})
   const [adapterMessage, setAdapterMessage] = useState<string>()
-  const [liveMessage, setLiveMessage] = useState('Haastatteluohjaamo valmis.')
+  const [liveMessage, setLiveMessage] = useState('Valmis kirjaamaan tarinaa.')
 
   useEffect(() => {
     let cancelled = false
@@ -155,13 +166,18 @@ export function InterviewCockpit() {
     dialogRef.current?.close()
     await interview.restart()
     setAdapterMessage(undefined)
-    setLiveMessage('Haastattelu aloitettiin alusta.')
+    setLiveMessage('Tämän haastateltavan tarinat tyhjennettiin.')
   }, [interview])
 
-  const handleExport = useCallback(() => {
+  const handleExportJson = useCallback(() => {
     downloadJson(exportFileName(interview.session), interview.exportDocument)
-    setLiveMessage('Perhehistoria-JSON ladattiin.')
+    setLiveMessage('JSON-kopio ladattiin.')
   }, [interview.exportDocument, interview.session])
+
+  const handleExportText = useCallback(() => {
+    downloadText(storiesFileName(interview.session), toStoriesText(interview.session))
+    setLiveMessage('Tekstitiedosto ladattiin.')
+  }, [interview.session])
 
   const handleMergeSegments = useCallback(() => {
     const text = interview.answer.segments
@@ -225,9 +241,11 @@ export function InterviewCockpit() {
       </a>
 
       <ProgressHeader
+        respondent={interview.respondent}
         questionIndex={interview.questionIndex}
         questionCount={interview.questionCount}
         onGoTo={interview.goTo}
+        onChangePerson={onChangePerson}
       />
 
       <p className="visually-hidden" aria-live="polite">
@@ -263,6 +281,7 @@ export function InterviewCockpit() {
 
         <div className="layout__side">
           <TranscriptEditor
+            respondent={interview.respondent}
             notes={interview.answer.notes}
             transcript={interview.answer.transcript}
             segments={interview.answer.segments}
@@ -281,23 +300,25 @@ export function InterviewCockpit() {
           <ExportPanel
             interviewId={interview.session.id}
             updatedAt={formatClock(interview.session.updatedAt)}
-            onExport={handleExport}
+            respondentName={interview.respondent.name}
+            onExportText={handleExportText}
+            onExportJson={handleExportJson}
           />
         </div>
       </main>
 
       <dialog ref={dialogRef} className="confirm" aria-labelledby="alusta-otsikko">
-        <h2 id="alusta-otsikko">Aloitetaanko haastattelu alusta?</h2>
+        <h2 id="alusta-otsikko">Tyhjennetäänkö tämän henkilön tarinat?</h2>
         <p>
-          Tämä tyhjentää muistiinpanot, litteraatit ja tällä laitteella tallennetut nauhat. Toimintoa
-          ei voi perua.
+          Tämä pyyhkii vain valitun haastateltavan muistiinpanot, litteraatit ja nauhat tältä
+          laitteelta. Toisen vanhemman tarinat jäävät. Toimintoa ei voi perua.
         </p>
         <div className="button-row">
           <button type="button" className="btn" onClick={() => dialogRef.current?.close()}>
             Peruuta
           </button>
           <button type="button" className="btn btn--record" onClick={() => void confirmRestart()}>
-            Kyllä, aloita alusta
+            Kyllä, tyhjennä
           </button>
         </div>
       </dialog>

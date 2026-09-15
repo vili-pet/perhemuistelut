@@ -1,6 +1,9 @@
 export const SPEAKER_IDS = ['vili', 'leena', 'jorma', 'unknown'] as const
 export type SpeakerId = (typeof SPEAKER_IDS)[number]
 
+export const RESPONDENT_IDS = ['leena', 'jorma'] as const
+export type RespondentId = (typeof RESPONDENT_IDS)[number]
+
 export const SPEAKER_ROLES = ['interviewer', 'respondent', 'unknown'] as const
 export type SpeakerRole = (typeof SPEAKER_ROLES)[number]
 

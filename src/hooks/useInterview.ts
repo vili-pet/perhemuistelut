@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { getRespondent } from '../data/participants.ts'
 import { QUESTIONS } from '../data/questions.ts'
 import { toFamilyHistoryExport } from '../export/familyHistory.ts'
 import { createId, nowIso } from '../lib/id.ts'
@@ -10,7 +11,13 @@ import {
   loadOrCreateSession,
   saveSession,
 } from '../storage/interviewStorage.ts'
-import type { AudioRecordingMeta, InterviewSession, SpeakerId, SpeakerSegment } from '../types.ts'
+import type {
+  AudioRecordingMeta,
+  InterviewSession,
+  RespondentId,
+  SpeakerId,
+  SpeakerSegment,
+} from '../types.ts'
 
 function touchAnswer(
   session: InterviewSession,
@@ -26,8 +33,8 @@ function touchAnswer(
   }
 }
 
-export function useInterview() {
-  const [session, setSession] = useState<InterviewSession>(() => loadOrCreateSession())
+export function useInterview(personId: RespondentId) {
+  const [session, setSession] = useState<InterviewSession>(() => loadOrCreateSession(personId))
 
   useEffect(() => {
     try {
@@ -42,6 +49,7 @@ export function useInterview() {
   const answer = session.answers[questionIndex]
   const isFirst = questionIndex === 0
   const isLast = questionIndex === QUESTIONS.length - 1
+  const respondent = session.respondents[0] ?? getRespondent(personId)
 
   const goTo = useCallback((index: number) => {
     setSession((current) => ({
@@ -86,7 +94,7 @@ export function useInterview() {
     )
   }, [])
 
-  const addSegment = useCallback((speaker: SpeakerId = 'unknown') => {
+  const addSegment = useCallback((speaker: SpeakerId = personId) => {
     const segment: SpeakerSegment = {
       id: createId('jakso'),
       speaker,
@@ -99,7 +107,7 @@ export function useInterview() {
       })),
     )
     return segment.id
-  }, [])
+  }, [personId])
 
   const updateSegment = useCallback((segmentId: string, patch: Partial<SpeakerSegment>) => {
     setSession((current) =>
@@ -159,14 +167,15 @@ export function useInterview() {
     } catch {
       // Audio cleanup is best-effort.
     }
-    clearSession()
-    setSession(createEmptySession())
-  }, [session])
+    clearSession(personId)
+    setSession(createEmptySession(getRespondent(personId)))
+  }, [personId, session])
 
   const exportDocument = useMemo(() => toFamilyHistoryExport(session), [session])
 
   return {
     session,
+    respondent,
     question,
     answer,
     questionIndex,

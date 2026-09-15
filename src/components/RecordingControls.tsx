@@ -124,11 +124,14 @@ export function RecordingControls({
         <input type="file" accept="audio/*" onChange={handleUpload} />
       </label>
 
-      <p className="shortcuts">
-        Pikanäppäimet: <kbd>R</kbd> nauhoita, <kbd>P</kbd> tauko, <kbd>S</kbd> tallenna,{' '}
-        <kbd>←</kbd>/<kbd>B</kbd> edellinen, <kbd>→</kbd>/<kbd>N</kbd> seuraava, <kbd>Alt</kbd>+
-        <kbd>K</kbd> alusta. Tekstikentässä käytä Alt-yhdistelmää.
-      </p>
+      <details className="shortcuts">
+        <summary>Pikanäppäimet</summary>
+        <p>
+          <kbd>R</kbd> nauhoita, <kbd>P</kbd> tauko, <kbd>S</kbd> tallenna, <kbd>←</kbd>/
+          <kbd>B</kbd> edellinen, <kbd>→</kbd>/<kbd>N</kbd> seuraava, <kbd>Alt</kbd>+<kbd>K</kbd>{' '}
+          alusta. Tekstikentässä käytä Alt-yhdistelmää.
+        </p>
+      </details>
 
       <section className="recordings" aria-labelledby="nauhahistoria-otsikko">
         <h3 id="nauhahistoria-otsikko">Tämän kysymyksen nauhat</h3>

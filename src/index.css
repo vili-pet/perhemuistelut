@@ -104,8 +104,12 @@ body {
 }
 
 .masthead__people {
-  margin: 0.6rem 0 0;
+  margin: 0.6rem 0 0.8rem;
   font-size: 1.2rem;
+}
+
+.masthead__switch {
+  width: fit-content;
 }
 
 .progress-block__label {
@@ -201,6 +205,7 @@ body {
 }
 
 .prompt-grid h3,
+.question-panel h3,
 .controls h2,
 .editor h2,
 .export h2,
@@ -210,6 +215,7 @@ body {
 }
 
 .prompt-grid ul,
+.question-panel ul,
 .recordings ul,
 .segments {
   margin: 0;
@@ -314,9 +320,32 @@ textarea {
   min-height: 7rem;
 }
 
+.editor > .field textarea {
+  min-height: 12rem;
+  font-size: 1.2rem;
+  line-height: 1.5;
+}
+
+.follow-ups,
+.extra-tools,
 .shortcuts {
-  font-size: 1rem;
-  margin: 0.4rem 0 1rem;
+  margin-top: 1rem;
+  font-size: 1.05rem;
+}
+
+.follow-ups summary,
+.extra-tools summary,
+.shortcuts summary {
+  cursor: pointer;
+  font-weight: 800;
+  min-height: 2.8rem;
+  display: flex;
+  align-items: center;
+}
+
+.follow-ups ul,
+.extra-tools ul {
+  margin: 0.6rem 0 0;
 }
 
 kbd {
@@ -377,12 +406,78 @@ kbd {
   background: rgba(22, 17, 12, 0.55);
 }
 
+.picker {
+  width: min(48rem, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2rem 0 3.5rem;
+}
+
+.picker__brand h1 {
+  margin: 0;
+  font-family: var(--font);
+  font-size: clamp(2.1rem, 6vw, 3.4rem);
+  line-height: 1.1;
+}
+
+.picker__lead {
+  margin: 1rem 0 0;
+  font-size: 1.3rem;
+  max-width: 38rem;
+}
+
+.person-cards {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.person-card {
+  display: grid;
+  justify-items: start;
+  gap: 0.45rem;
+  min-height: 12rem;
+  padding: 1.4rem 1.5rem;
+  border: 3px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.person-card:hover {
+  background: #fff;
+}
+
+.person-card__name {
+  font-family: var(--font);
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  line-height: 1;
+}
+
+.person-card__meta,
+.person-card__progress {
+  font-size: 1.2rem;
+}
+
+.person-card__cta {
+  margin-top: 0.6rem;
+  font-weight: 800;
+  font-size: 1.15rem;
+}
+
 @media (min-width: 880px) {
   .progress-nav {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .prompt-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .person-cards {
     grid-template-columns: 1fr 1fr;
   }
 
