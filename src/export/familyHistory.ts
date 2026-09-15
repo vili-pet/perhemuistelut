@@ -20,7 +20,7 @@ export function toFamilyHistoryExport(session: InterviewSession): FamilyHistoryE
       continuousRecording: true,
       audio: session.recordings,
       topicTimestamps: session.topicTimestamps,
-      facts: session.facts,
+      facts: session.facts ?? [],
       questions: session.answers.map((answer) => {
         const definition = getQuestionById(answer.questionId)
         return {
@@ -30,7 +30,7 @@ export function toFamilyHistoryExport(session: InterviewSession): FamilyHistoryE
           label: definition?.label ?? answer.theme,
           question: answer.question,
           followUps: definition?.followUps ?? [],
-          personalizedFollowUps: answer.personalizedFollowUps,
+          personalizedFollowUps: answer.personalizedFollowUps ?? [],
           recordedAt: {
             startedAt: answer.startedAt,
             endedAt: answer.endedAt,

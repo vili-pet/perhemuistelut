@@ -170,7 +170,7 @@ export function extractFactsFromAnswer(answer: QuestionAnswer): SessionFact[] {
   const transcript = answer.transcript.trim().startsWith(PLACEHOLDER_TRANSCRIPT)
     ? ''
     : answer.transcript
-  const segments = answer.segments.map((segment) => segment.text).join('\n')
+  const segments = (answer.segments ?? []).map((segment) => segment.text).join('\n')
   return extractFactsFromText(
     [answer.notes, transcript, segments, answer.mark?.note ?? ''].join('\n'),
     answer.questionId,

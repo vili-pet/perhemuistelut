@@ -128,6 +128,7 @@ export function InterviewCockpit() {
         source: meta.source,
         fileName: meta.fileName,
       })
+      interview.harvestFacts()
       setLiveMessage('Nauhoitus tallennettiin yhteiseen istuntoon.')
     },
     [interview],
@@ -163,10 +164,11 @@ export function InterviewCockpit() {
   const handleStop = useCallback(() => {
     void recorder.stop().then((result) => {
       if (result) {
+        interview.harvestFacts()
         setLiveMessage('Nauhoitus lopetettu. Paina Tallenna, jotta nauha jää tälle laitteelle.')
       }
     })
-  }, [recorder])
+  }, [interview, recorder])
 
   const handleSave = useCallback(async () => {
     const result = await recorder.save()
@@ -203,7 +205,7 @@ export function InterviewCockpit() {
     interview.next(topicMarker())
     setLiveMessage(
       liveRecording
-        ? 'Aihe vaihtui, nauhoitus jatkuu.'
+        ? 'Aihe vaihtui, nauhoitus jatkuu. Faktoja kerättiin edellisestä aiheesta.'
         : 'Seuraava aihe. Nauhoitus ei katkennut, koska se ei ollut käynnissä.',
     )
   }, [interview, liveRecording, topicMarker])
@@ -314,6 +316,7 @@ export function InterviewCockpit() {
     if (result.segments.length > 0) {
       interview.setSegments(result.segments)
     }
+    interview.harvestFacts()
     setAdapterMessage(result.message)
     setLiveMessage(result.message)
   }, [adapter, interview])
@@ -437,8 +440,8 @@ export function InterviewCockpit() {
       <dialog ref={dialogRef} className="confirm" aria-labelledby="alusta-otsikko">
         <h2 id="alusta-otsikko">Tyhjennetäänkö yhteinen haastattelu?</h2>
         <p>
-          Tämä pyyhkii Leenan ja Jorman yhteiset muistiinpanot, litteraatit, aihemerkit ja nauhat
-          tältä laitteelta. Toimintoa ei voi perua.
+          Tämä pyyhkii Leenan ja Jorman yhteiset muistiinpanot, litteraatit, faktat, aihemerkit ja
+          nauhat tältä laitteelta. Toimintoa ei voi perua.
         </p>
         <div className="button-row">
           <button type="button" className="btn" onClick={() => dialogRef.current?.close()}>

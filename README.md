@@ -87,4 +87,5 @@ Nämä eivät ole pakollisia runtime-riippuvuuksia.
 - Suomi, luettava leipäteksti, suurempi Vilin chat-kupla
 - Korkea kontrasti, näkyvä `focus-visible`
 - `lang="fi"`, skip-linkki, `aria-live`, progressbar, erilliset nauhoitusnapit
-- Responsiivinen: yksi palsta puhelimessa, kaksi työpöydällä
+- **Puhelin ensin (~360–430 px):** isot napit (≥44 px), ei hover-only-toimintoja, ei vaakasivutusta. Nauhoituspalkki on pienellä ruudulla alareunassa (record / tauko / lopeta / tallenna + edellinen / seuraava). Kehote jää sen yläpuolelle; palkki ei peitä Vilin chat-kuplaa, koska sisältö saa alareunaan tilaa.
+- Tabletti/työpöytä: `min-width` 768 px tuo nauhoituksen takaisin sivupolkuun, 960 px kaksi palstaa.

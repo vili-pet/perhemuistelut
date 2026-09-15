@@ -1,32 +1,61 @@
 import { describe, expect, it } from 'vitest'
+import {
+  buildPokeBookmarkPayload,
+  isPokeConfigured,
+  sendPokeBookmark,
+} from './poke.ts'
 import { QUESTIONS } from '../data/questions.ts'
 import { createEmptySession } from '../storage/interviewStorage.ts'
-import { buildPokeBookmarkPayload, POKE_INBOUND_URL } from './poke.ts'
 
-describe('Poke reminder payload', () => {
-  it('rakentaa outbound-muistutuksen paluu-merkinnästä, ei kysymys-APIa', () => {
+describe('Poke outbound', () => {
+  it('rakentaa paluu-muistutuksen Vilin merkinnästä', () => {
     const session = createEmptySession()
-    const question = QUESTIONS[1]
-    session.answers[1].mark.returnLater = true
-    session.answers[1].mark.note = 'Jorma muistaa merkin.'
-    session.answers[1].cueOffsetMs = 125000
-
+    session.answers[0].mark.note = 'Palaa autoon.'
+    session.answers[0].cueOffsetMs = 125000
     const payload = buildPokeBookmarkPayload({
       session,
-      question,
-      answer: session.answers[1],
+      question: QUESTIONS[0],
+      answer: session.answers[0],
     })
-
-    expect(POKE_INBOUND_URL).toBe('https://poke.com/api/v1/inbound/api-message')
     expect(payload.source).toBe('perhemuistelut')
     expect(payload.returnLater).toBe(true)
-    expect(payload.questionId).toBe(question.id)
-    expect(payload.question).toBe(question.question)
-    expect(payload.note).toBe('Jorma muistaa merkin.')
+    expect(payload.questionId).toBe(QUESTIONS[0].id)
+    expect(payload.message).toContain('Palaa autoon.')
     expect(payload.offsetLabel).toBe('2:05')
-    expect(payload.message).toContain('palaa myöhemmin')
-    expect(payload.message).toContain('Leena ja Jorma')
-    expect(payload).not.toHaveProperty('questions')
-    expect(payload).not.toHaveProperty('followUps')
+  })
+
+  it('jättää merkin paikalliseksi ilman avainta', async () => {
+    expect(isPokeConfigured()).toBe(false)
+    const result = await sendPokeBookmark({
+      message: 'x',
+      source: 'perhemuistelut',
+      interviewId: 'haastattelu-1',
+      questionId: QUESTIONS[0].id,
+      question: QUESTIONS[0].question,
+      theme: QUESTIONS[0].theme,
+      note: 'x',
+      returnLater: true,
+    })
+    expect(result.ok).toBe(false)
+    expect(result.message).toContain('Poke-avainta ei ole')
+  })
+})
+
+describe('questions API merge', () => {
+  it('säilyttää paikalliset 10 kehotetta ja voi täydentää tukikysymyksiä', async () => {
+    const { mergeRemoteQuestions, parseQuestionsPayload } = await import('./questionsSource.ts')
+    const remote = parseQuestionsPayload({
+      questions: [
+        {
+          id: 'eka-telkkari',
+          question: 'tätä ei saa korvata',
+          followUps: ['Oliko antenni katolla?'],
+        },
+      ],
+    })
+    const merged = mergeRemoteQuestions(remote)
+    expect(merged).toHaveLength(10)
+    expect(merged[0]?.question).toBe(QUESTIONS[0].question)
+    expect(merged[0]?.followUps).toContain('Oliko antenni katolla?')
   })
 })
