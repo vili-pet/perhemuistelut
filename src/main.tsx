@@ -4,7 +4,9 @@ import App from './App.tsx'
 import './index.css'
 
 const root = document.getElementById('root')
-if (!root) throw new Error('Sovelluksen juurielementti puuttuu.')
+if (!root) {
+  throw new Error('Sovelluksen juurielementti puuttuu.')
+}
 
 createRoot(root).render(
   <StrictMode>
