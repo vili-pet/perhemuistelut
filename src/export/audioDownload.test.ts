@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createEmptySession } from '../storage/interviewStorage.ts'
-import { audioFileName, pendingAudioFileName } from './audioDownload.ts'
+import { audioFileName, downloadAudioBlob, pendingAudioFileName } from './audioDownload.ts'
 
 describe('audio download names', () => {
   it('antaa webm/m4a/ogg-päätteen mime-tyypistä', () => {
@@ -11,6 +11,20 @@ describe('audio download names', () => {
     expect(audioFileName(session, { mimeType: 'audio/mp4' }, 1)).toContain('nauha-2')
     expect(audioFileName(session, { mimeType: 'audio/mp4' }, 1)).toMatch(/\.m4a$/)
     expect(audioFileName(session, { mimeType: 'audio/ogg;codecs=opus' }, 0)).toMatch(/\.ogg$/)
+  })
+
+  it('lataa blobin a-elementin kautta', () => {
+    const clicks: string[] = []
+    const originalClick = HTMLAnchorElement.prototype.click
+    HTMLAnchorElement.prototype.click = function clickSpy() {
+      clicks.push(this.download)
+    }
+    try {
+      downloadAudioBlob('perhemuistelut-testi.webm', new Blob(['abc'], { type: 'audio/webm' }))
+      expect(clicks).toEqual(['perhemuistelut-testi.webm'])
+    } finally {
+      HTMLAnchorElement.prototype.click = originalClick
+    }
   })
 
   it('säilyttää liitetyn tiedoston nimen', () => {

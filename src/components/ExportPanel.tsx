@@ -3,7 +3,7 @@ interface ExportPanelProps {
   updatedAt: string
   respondentNames: string
   factCount: number
-  recordingCount: number
+  canDownloadAudio: boolean
   onExportText: () => void
   onExportJson: () => void
   onDownloadAudio: () => void
@@ -14,7 +14,7 @@ export function ExportPanel({
   updatedAt,
   respondentNames,
   factCount,
-  recordingCount,
+  canDownloadAudio,
   onExportText,
   onExportJson,
   onDownloadAudio,
@@ -39,7 +39,7 @@ export function ExportPanel({
           type="button"
           className="btn btn--save"
           onClick={onDownloadAudio}
-          disabled={recordingCount === 0}
+          disabled={!canDownloadAudio}
         >
           Tallenna äänitiedosto koneelle/puhelimeen
         </button>

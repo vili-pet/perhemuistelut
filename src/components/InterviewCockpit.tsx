@@ -345,10 +345,10 @@ export function InterviewCockpit() {
       return
     }
     const latest = interview.session.recordings.at(-1)
-    let audioBlob: Blob | undefined
-    if (latest) {
+    let audioBlob: Blob | undefined = recorder.pending?.blob
+    if (!audioBlob && latest) {
       try {
-        const clip = await getAudioClip(latest.id)
+        const clip = await getAudioClip(latest.blobRef)
         audioBlob = clip?.blob
       } catch {
         audioBlob = undefined
@@ -360,8 +360,8 @@ export function InterviewCockpit() {
       language: 'fi',
       audioBlob,
       audioBlobRef: latest?.blobRef,
-      mimeType: latest?.mimeType,
-      durationMs: latest?.durationMs,
+      mimeType: latest?.mimeType ?? recorder.pending?.mimeType,
+      durationMs: latest?.durationMs ?? recorder.pending?.durationMs,
       speakers: toSpeakerHints(),
       diarization: true,
       topicTimestamps: interview.session.topicTimestamps,
@@ -382,7 +382,7 @@ export function InterviewCockpit() {
     interview.harvestFacts()
     setAdapterMessage(result.message)
     setLiveMessage(result.message)
-  }, [adapter, interview, liveRecording])
+  }, [adapter, interview, liveRecording, recorder.pending])
 
   useKeyboardShortcuts({
     onRecord: handleRecord,
@@ -498,7 +498,9 @@ export function InterviewCockpit() {
             updatedAt={formatClock(interview.session.updatedAt)}
             respondentNames={respondentNamesWithYears(interview.session.respondents)}
             factCount={interview.session.facts.length}
-            recordingCount={interview.session.recordings.length}
+            canDownloadAudio={
+              recorder.uiState === 'pending' || interview.session.recordings.length > 0
+            }
             onExportText={handleExportText}
             onExportJson={handleExportJson}
             onDownloadAudio={() => {
