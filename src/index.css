@@ -1,0 +1,18 @@
+:root { color-scheme: light; --bg: #f6efe2; --bg-raised: #fffaf1; --bg-inset: #efe4d0; --ink: #16110c; --line: #16110c; --accent: #8f1d1d; --forest: #163d32; --focus: #c45c14; --focus-ring: 3px solid #c45c14; --shadow: 0 10px 28px rgba(22,17,12,.12); --radius: 18px; --font: 'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif; --ui: 'Avenir Next','Segoe UI','Helvetica Neue',sans-serif; --space: clamp(1rem,2vw,1.6rem); }
+*,*::before,*::after { box-sizing: border-box; }
+html { font-size: 112.5%; }
+body { margin: 0; min-height: 100vh; background: radial-gradient(circle at top left,#fff8ea 0%,transparent 40%),var(--bg); color: var(--ink); font-family: var(--ui); font-size: 1.125rem; line-height: 1.55; }
+#root { min-height: 100vh; }
+:focus-visible { outline: var(--focus-ring); outline-offset: 3px; }
+.cockpit { width: min(1240px,calc(100% - 2rem)); margin: 0 auto; padding: 1.25rem 0 3rem; }
+.masthead { display: grid; gap: 1.25rem; margin-bottom: 1.5rem; }
+.eyebrow { margin: 0 0 .25rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: 1rem; }
+.masthead h1 { margin: 0; font-family: var(--font); font-size: clamp(2rem,5vw,3.1rem); line-height: 1.1; }
+.masthead__people { margin: .6rem 0 0; font-size: 1.2rem; }
+.layout { display: grid; gap: 1.25rem; }
+.layout__primary,.layout__side,.question-panel,.controls,.editor,.export { background: var(--bg-raised); border: 3px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: var(--space); }
+.btn { min-height: 3.1rem; padding: .65rem 1rem; border: 3px solid var(--line); background: #fff; color: var(--ink); font: inherit; font-weight: 800; cursor: pointer; }
+.btn--record { background: var(--accent); color: #fffaf1; }
+.btn--save { background: var(--forest); color: #fffaf1; }
+textarea,input,select { width: 100%; font: inherit; color: var(--ink); background: #fff; border: 2px solid var(--line); border-radius: 10px; padding: .7rem .8rem; }
+@media (min-width:880px) { .layout { grid-template-columns: minmax(0,1.15fr) minmax(20rem,.85fr); align-items: start; } }
