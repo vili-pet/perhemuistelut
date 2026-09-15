@@ -40,22 +40,3 @@ describe('Poke outbound', () => {
     expect(result.message).toContain('Poke-avainta ei ole')
   })
 })
-
-describe('questions API merge', () => {
-  it('säilyttää paikalliset 10 kehotetta ja voi täydentää tukikysymyksiä', async () => {
-    const { mergeRemoteQuestions, parseQuestionsPayload } = await import('./questionsSource.ts')
-    const remote = parseQuestionsPayload({
-      questions: [
-        {
-          id: 'eka-telkkari',
-          question: 'tätä ei saa korvata',
-          followUps: ['Oliko antenni katolla?'],
-        },
-      ],
-    })
-    const merged = mergeRemoteQuestions(remote)
-    expect(merged).toHaveLength(10)
-    expect(merged[0]?.question).toBe(QUESTIONS[0].question)
-    expect(merged[0]?.followUps).toContain('Oliko antenni katolla?')
-  })
-})

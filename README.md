@@ -27,6 +27,8 @@ npm run build
 npm run preview
 ```
 
+Vercel ajaa saman `npm run build` -komennon (`tsc -b && vite build`) ja julkaisee `dist/`-hakemiston. TypeScript-virheet katkaisevat deployn.
+
 Valinnaiset avaimet: kopioi `.env.example` tiedostoksi `.env`. Mikään niistä ei ole pakollinen. Haastattelu toimii ilman verkkoa.
 
 ## Nauhoitus
