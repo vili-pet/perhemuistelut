@@ -6,7 +6,14 @@ Yksi yhteinen istunto. Ei henkilövalitsinta. Vanhemmat juttelevat yhdessä — 
 
 Kymmenen pääkysymystä ovat täsmälleen [kysymykset.md](https://github.com/vili-pet/perhemuistelut)-tiedostosta. Niitä ei kirjoiteta uusiksi. Kirjautumista ei ole.
 
-Selainnauhoitus on totuus. Letterly ja Hedy tulevat vasta litterointiin jälkeenpäin. Haastattelun aikana ei ole live-webhookia.
+## Putki
+
+1. **Nauhoita** selaimessa (yksi teema ruudulla, ääni jatkuu koko keskustelun).
+2. **Lopeta** keskustelun päätteeksi ja **tallenna äänitiedosto koneelle tai puhelimeen** (webm / m4a / ogg). Selain-localStorage / IndexedDB ei ole ainoa kopio.
+3. **Myöhemmin Hedy:** asennettu Hedy-sovellus ottaa äänitiedoston. Valmiit litteroinnit palaavat API:sta tai webhookista.
+4. Vili tarkistaa puhujatägit. Diarisointi on luonnos, ei lopullinen.
+
+Hedya ei tarvita haastattelun aikana. Ei tuplanauhoitusta Hedyssä haastatellessa. Haastattelun aikana ei ole live-webhookia.
 
 ## Käynnistys
 
@@ -37,12 +44,12 @@ Yksi nauha voi sisältää koko kymmenen aiheen setin.
 
 1. Selain yrittää `MediaRecorder` + `getUserMedia` -nauhoitusta, jos konteksti on suojattu ja API on tuettu.
 2. Tuetut mime-tyypit kokeillaan järjestyksessä: `audio/webm;codecs=opus`, `audio/webm`, `audio/mp4`, `audio/ogg`.
-3. **Nauhoita**, **Tauko**, **Lopeta** ja **Tallenna** ovat erillisiä nappeja. Lopeta ei tallenna; Tallenna ei lopeta.
-4. Edellinen / Seuraava merkitsevät aiheeseen aikaleiman, jos nauhoitus on käynnissä tai tauolla. Ne eivät pysäytä MediaRecorderia.
-5. Jos MediaRecorder puuttuu, lupa evätään tai yhteys ei ole suojattu, kirjoittaminen ja tiedoston liittäminen toimivat silti.
-6. Ääniblobit tallennetaan **IndexedDB**:hen. `localStorage` pitää metadatan, aihemerkit, faktat ja `blobRef`-viitteen.
+3. **Nauhoita**, **Tauko**, **Lopeta** ja **Tallenna äänitiedosto** ovat erillisiä nappeja. Lopeta ei katkaise aiheen vaihtoa. Aiheen vaihto ei katkaise ääntä.
+4. Lopetuksen jälkeen nauha autosaveataan IndexedDB:hen, mutta **pakollinen UX** on lataus pois selaimesta: *Tallenna äänitiedosto koneelle/puhelimeen*. Sama nappi on myöhemmin istunnon nauhoissa.
+5. Edellinen / Seuraava merkitsevät aiheeseen aikaleiman, jos nauhoitus on käynnissä tai tauolla. Ne eivät pysäytä MediaRecorderia.
+6. Jos MediaRecorder puuttuu, lupa evätään tai yhteys ei ole suojattu, kirjoittaminen ja tiedoston liittäminen toimivat silti.
 
-Pikanäppäimet: `R` nauhoita, `P` tauko, `E` lopeta, `S` tallenna, `N`/→ seuraava, `B`/← edellinen, `Alt+K` alusta.
+Pikanäppäimet: `R` nauhoita, `P` tauko, `E` lopeta, `S` tallenna äänitiedosto, `N`/→ seuraava, `B`/← edellinen, `Alt+K` alusta.
 
 Kesken nauhoituksen Vili voi liputtaa aiheen kiinnostavaksi, kirjoittaa lyhyen merkin, merkitä **palaa myöhemmin** ja hypätä takaisin listasta. Ääni ei katkea.
 
@@ -54,18 +61,22 @@ Kesken nauhoituksen Vili voi liputtaa aiheen kiinnostavaksi, kirjoittaa lyhyen m
 
 Ääni:
 
-- IndexedDB `perhemuistelut-audio` / `clips` — blobit `blobRef`-avaimella
+- IndexedDB `perhemuistelut-audio` / `clips` — blobit `blobRef`-avaimella (autosave, ei ainoa kopio)
+- **Tallenna äänitiedosto koneelle/puhelimeen** lataa MediaRecorder-blobin (webm / m4a / ogg)
 
 Vienti:
 
+- **Tallenna äänitiedosto koneelle/puhelimeen** on varmuuskopio pois selaimesta.
 - **Lataa tarinat tekstinä** tekee luettavan `.txt`-kopion.
 - **Lataa JSON** vie skeeman `perhemuistelut.family-history.v1` (molemmat vastaajat, `continuousRecording`, session `audio`, `topicTimestamps`, `facts`, merkit, henkilökohtaiset tukikysymykset; ei äänibittiä).
 
-## Litterointi
+## Hedy-jälkikäsittely
 
-- Adapteri (`placeholder` tai `webhook`) rakentaa esimerkkipayloadin, jossa on koko istunnon ääni, aihemerkit, faktapankki, henkilökohtaiset tukikysymykset ja diarisointiohjeet: Vili / Leena / Jorma / Tuntematon.
-- Pyyntö lähtee vain napista **Valmistele litterointipyyntö**. Haastattelun aikana ei ole live-webhookia eikä tuplanauhoitusta.
-- `VITE_TRANSCRIPTION_WEBHOOK_URL` on valinnainen. Ilman sitä paikkateksti jää ruudulle, ja Vili voi kirjoittaa jaksot käsin.
+- Hedy ei kaappaa live-ääntä. Asennettu Hedy-sovellus vastaanottaa ladatun äänitiedoston.
+- Adapteri (`hedy-placeholder` tai `hedy`) rakentaa esimerkkipayloadin: äänimetatieto, blob/file-viite, aihemerkit, puhujat Vili / Leena / Jorma / Tuntematon, `diarizationDraft: true`, `humanReviewRequired: true`.
+- Pyyntö lähtee vain napista **Valmistele Hedy-pyyntö jälkeenpäin**. Nauhoituksen aikana nappi on pois päältä. Ei live-webhookia, ei tuplanauhoitusta.
+- `VITE_HEDY_WEBHOOK_URL` / `VITE_HEDY_API_URL` ovat valinnaisia. Ilman niitä paikka-adapteri näyttää ohjeen, ja Vili voi kirjoittaa jaksot käsin.
+- Puhujatägit ovat luonnos, kunnes Vili tarkistaa ne. Diarisointi ei ole koskaan lopullinen.
 
 ## Faktapankki ja henkilökohtaistaminen
 
@@ -89,5 +100,5 @@ Nämä eivät ole pakollisia runtime-riippuvuuksia.
 - Suomi, luettava leipäteksti, suurempi Vilin chat-kupla
 - Korkea kontrasti, näkyvä `focus-visible`
 - `lang="fi"`, skip-linkki, `aria-live`, progressbar, erilliset nauhoitusnapit
-- **Puhelin ensin (~360–430 px):** isot napit (≥44 px), ei hover-only-toimintoja, ei vaakasivutusta. Nauhoituspalkki on pienellä ruudulla alareunassa (record / tauko / lopeta / tallenna + edellinen / seuraava). Kehote jää sen yläpuolelle; palkki ei peitä Vilin chat-kuplaa, koska sisältö saa alareunaan tilaa.
+- **Puhelin ensin (~360–430 px):** isot napit (≥44 px), ei hover-only-toimintoja, ei vaakasivutusta. Nauhoituspalkki on pienellä ruudulla alareunassa (record / tauko / lopeta / tallenna äänitiedosto + edellinen / seuraava). Kehote jää sen yläpuolelle; palkki ei peitä Vilin chat-kuplaa, koska sisältö saa alareunaan tilaa.
 - Tabletti/työpöytä: `min-width` 768 px tuo nauhoituksen takaisin sivupolkuun, 960 px kaksi palstaa.
