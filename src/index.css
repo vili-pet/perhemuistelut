@@ -36,6 +36,7 @@ body {
   min-height: 100dvh;
   max-width: 100%;
   overflow-x: clip;
+  padding-top: var(--tg-content-safe-area-inset-top, var(--tg-safe-area-inset-top, 0px));
   background:
     radial-gradient(circle at top left, #fff8ea 0%, transparent 40%),
     var(--bg);
@@ -90,6 +91,42 @@ svg {
 
 .skip-link:focus {
   top: 0.75rem;
+}
+
+.dev-banner {
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  background: var(--bg-inset);
+  border-bottom: 3px solid var(--line);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.access-gate {
+  min-height: 100dvh;
+  padding: 1.25rem 1rem;
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  max-width: 32rem;
+}
+
+.access-gate h1 {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 1.7rem;
+  line-height: 1.2;
+}
+
+.access-gate p {
+  margin: 0;
+  font-size: 1.08rem;
+}
+
+.access-gate__id code {
+  font-size: 1.05rem;
+  background: var(--bg-inset);
+  padding: 0.15rem 0.4rem;
 }
 
 .cockpit {

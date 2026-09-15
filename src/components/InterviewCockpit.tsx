@@ -22,7 +22,7 @@ import { createObjectUrl, getAudioClip, saveAudioClip } from '../storage/audioSt
 import type { TopicMarker } from '../storage/interviewStorage.ts'
 import { createTranscriptionAdapter } from '../transcription/adapter.ts'
 import { toSpeakerHints } from '../transcription/payload.ts'
-import type { AudioRecordingMeta } from '../types.ts'
+import type { AudioRecordingMeta, QuestionMark } from '../types.ts'
 import { BookmarkList } from './BookmarkList.tsx'
 import { ExportPanel } from './ExportPanel.tsx'
 import { FactBank } from './FactBank.tsx'
@@ -31,6 +31,7 @@ import { QuestionPanel } from './QuestionPanel.tsx'
 import { RecordingControls } from './RecordingControls.tsx'
 import { TopicMarks } from './TopicMarks.tsx'
 import { TranscriptEditor } from './TranscriptEditor.tsx'
+import { useBotSync, type TelegramVoiceClip } from '../telegram/useBotSync.ts'
 
 function revokeAll(urls: Record<string, string>) {
   for (const url of Object.values(urls)) {
@@ -48,6 +49,7 @@ export function InterviewCockpit() {
   const [liveMessage, setLiveMessage] = useState('Valmis kirjaamaan tarinaa.')
   const [pokeMessage, setPokeMessage] = useState<string>()
   const [extraFollowUps, setExtraFollowUps] = useState<string[]>([])
+  const [telegramVoices, setTelegramVoices] = useState<TelegramVoiceClip[]>([])
 
   const liveRecording = recorder.uiState === 'recording' || recorder.uiState === 'paused'
   const pokeConfigured = isPokeConfigured()
@@ -286,6 +288,23 @@ export function InterviewCockpit() {
     [interview, liveRecording, topicMarker],
   )
 
+  const handleRemoteMark = useCallback(
+    (patch: Partial<QuestionMark>) => {
+      interview.updateMark(patch)
+    },
+    [interview],
+  )
+
+  useBotSync({
+    questionIndex: interview.questionIndex,
+    questionId: interview.question.id,
+    mark: interview.answer.mark,
+    miniAppRecording: liveRecording,
+    onRemoteIndex: handleGoTo,
+    onRemoteMark: handleRemoteMark,
+    onRemoteVoices: setTelegramVoices,
+  })
+
   const handleSendPoke = useCallback(async () => {
     interview.updateMark({ returnLater: true })
     const result = await sendPokeBookmark(
@@ -423,6 +442,7 @@ export function InterviewCockpit() {
       }}
       isFirst={interview.isFirst}
       isLast={interview.isLast}
+      telegramVoices={telegramVoices}
     />
   )
 

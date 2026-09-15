@@ -1,28 +1,55 @@
 # Perhemuistelot
 
-Suomenkielinen haastattelijan näkymä, jolla **Vili** kerää vanhempiensa **Leenan** ja **Jorman** (s. 1957) tarinoita.
+Telegram Mini App, jolla **Vili** haastattelee **Leenaa** ja **Jormaa** (s. 1957) puhelimen Telegramissa. Erillistä sovellusta ei avata.
 
-Yksi yhteinen istunto. Ei henkilövalitsinta. Vanhemmat juttelevat yhdessä — he eivät käytä ruutua. Ruudulla on yksi keskustelunaihe kerrallaan. **Seuraava** / **Edellinen** vaihtavat vain aiheen; ääni ei katkea.
+Yksi yhteinen istunto. Vanhemmat juttelevat yhdessä — he eivät käytä ruutua. Ruudulla on yksi keskustelunaihe kerrallaan. **Seuraava** / **Edellinen** vaihtavat vain aiheen; Mini Appin ääni ei katkea.
 
-Kymmenen pääkysymystä ovat täsmälleen [kysymykset.md](https://github.com/vili-pet/perhemuistelut)-tiedostosta. Niitä ei kirjoiteta uusiksi. Kirjautumista ei ole.
+Kymmenen pääkysymystä ovat täsmälleen [kysymykset.md](https://github.com/vili-pet/perhemuistelut)-tiedostosta. Niitä ei kirjoiteta uusiksi.
 
-## Putki
+Pääsy: vain Vilin Telegram-käyttäjä (`TELEGRAM_ALLOWED_USER_ID`). Muut saavat suomenkielisen hylkäyksen.
 
-1. **Nauhoita** selaimessa (yksi teema ruudulla, ääni jatkuu koko keskustelun).
-2. **Lopeta** keskustelun päätteeksi ja **tallenna äänitiedosto koneelle tai puhelimeen** (webm / m4a / ogg). Selain-localStorage / IndexedDB ei ole ainoa kopio.
-3. **Myöhemmin Hedy:** asennettu Hedy-sovellus ottaa äänitiedoston. Valmiit litteroinnit palaavat API:sta tai webhookista.
-4. Vili tarkistaa puhujatägit. Diarisointi on luonnos, ei lopullinen.
+## Telegram Mini App
 
-Hedya ei tarvita haastattelun aikana. Ei tuplanauhoitusta Hedyssä haastatellessa. Haastattelun aikana ei ole live-webhookia.
+1. Luo botti [@BotFather](https://t.me/BotFather) komennolla `/newbot`. Saat `TELEGRAM_BOT_TOKEN`.
+2. Deployaa tämä repo Verceliin (HTTPS). Kopioi preview- tai production-URL.
+3. BotFather: `/newapp` tai `/setmenubutton` → Web App URL = Vercel-osoite (juuri, esim. `https://….vercel.app`).
+4. Hae oma numerinen id (`@userinfobot` tai botti kertoo sen hylkäysviestissä). Aseta se allowlistiin.
+5. Vercel Environment Variables:
+   - `TELEGRAM_BOT_TOKEN` (salaisuus, ei `VITE_`)
+   - `TELEGRAM_ALLOWED_USER_ID` (Vilin numerinen id)
+   - `VITE_TELEGRAM_ALLOWED_USER_ID` (sama id Mini Appin client-portille; ei salaisuus)
+   - `TELEGRAM_WEBAPP_URL` (sama HTTPS-osoite kuin BotFatherissa)
+   - valinnainen `TELEGRAM_WEBHOOK_SECRET`
+6. Kytke webhook (älä aja `npm run bot` samaan aikaan):
+
+```bash
+curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
+  -d "url=https://YOUR.vercel.app/api/telegram" \
+  -d "secret_token=$TELEGRAM_WEBHOOK_SECRET"
+```
+
+7. Telegramissa `/start` → **Avaa haastattelu**. Napit: nykyinen aihe, edellinen/seuraava, kiinnostava, palaa myöhemmin.
+
+Päänauha on Mini Appin **MediaRecorder**. Telegram-ääniviesti on varatapa; botti ei ota sitä, jos Mini App nauhoittaa jo.
 
 ## Käynnistys
 
 ```bash
 npm install
+cp .env.example .env   # täytä Telegram-kentät bottia varten
 npm run dev
 ```
 
-Avaa Vite-osoite selaimessa (yleensä `http://localhost:5173`). Nauhoitus toimii localhostissa ja HTTPS-ympäristössä.
+Avaa Vite-osoite selaimessa (yleensä `http://localhost:5173`). Paikallinen kehitys on sallittu ilman Telegramia. Nauhoitus toimii localhostissa ja HTTPS-ympäristössä.
+
+Botti (long poll, poista webhook ensin):
+
+```bash
+curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/deleteWebhook"
+npm run bot
+```
+
+Botti kuuntelee Telegramia ja tarjoaa paikallisen APIn `http://127.0.0.1:8787` (`/api/session`, `/api/telegram`, `/api/telegram-verify`). Vite proxyttaa `/api` sinne.
 
 Tuotantoversio:
 
@@ -34,9 +61,16 @@ npm run build
 npm run preview
 ```
 
-Vercel ajaa saman `npm run build` -komennon (`tsc -b && vite build`) ja julkaisee `dist/`-hakemiston. TypeScript-virheet katkaisevat deployn.
+Vercel ajaa `npm run build` (`tsc -b && vite build`), julkaisee `dist/` ja serverless-reitit `api/*.js` (botti webhook + istunto). TypeScript-virheet katkaisevat deployn.
 
-Valinnaiset avaimet: kopioi `.env.example` tiedostoksi `.env`. Mikään niistä ei ole pakollinen. Haastattelu toimii ilman verkkoa.
+## Putki
+
+1. **Nauhoita** selaimessa (yksi teema ruudulla, ääni jatkuu koko keskustelun).
+2. **Lopeta** keskustelun päätteeksi ja **tallenna äänitiedosto koneelle tai puhelimeen** (webm / m4a / ogg). Selain-localStorage / IndexedDB ei ole ainoa kopio.
+3. **Myöhemmin Hedy:** asennettu Hedy-sovellus ottaa äänitiedoston. Valmiit litteroinnit palaavat API:sta tai webhookista.
+4. Vili tarkistaa puhujatägit. Diarisointi on luonnos, ei lopullinen.
+
+Hedya ei tarvita haastattelun aikana. Ei tuplanauhoitusta Hedyssä haastatellessa. Haastattelun aikana ei ole live-webhookia.
 
 ## Nauhoitus
 

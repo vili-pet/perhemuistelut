@@ -15,6 +15,7 @@ interface ImportMetaEnv {
   readonly VITE_LLM_API_KEY?: string
   readonly VITE_PERSONALIZE_URL?: string
   readonly VITE_PERSONALIZE_API_KEY?: string
+  readonly VITE_TELEGRAM_ALLOWED_USER_ID?: string
 }
 
 interface ImportMeta {

@@ -4,6 +4,7 @@ import { formatDuration } from '../lib/format.ts'
 import type { RecorderSupport } from '../recording/mediaRecorder.ts'
 import type { AudioRecordingMeta, TopicTimestamp } from '../types.ts'
 import type { RecorderUiState } from '../hooks/useRecorder.ts'
+import type { TelegramVoiceClip } from '../telegram/useBotSync.ts'
 
 interface RecordingControlsProps {
   support: RecorderSupport
@@ -25,6 +26,7 @@ interface RecordingControlsProps {
   onUpload: (file: File) => void
   isFirst: boolean
   isLast: boolean
+  telegramVoices?: TelegramVoiceClip[]
 }
 
 function statusText(uiState: RecorderUiState, support: RecorderSupport): string {
@@ -64,6 +66,7 @@ export function RecordingControls({
   onUpload,
   isFirst,
   isLast,
+  telegramVoices = [],
 }: RecordingControlsProps) {
   const recording = uiState === 'recording'
   const paused = uiState === 'paused'
@@ -134,7 +137,8 @@ export function RecordingControls({
         <h2 id="nauha-lisat-otsikko">Nauhan tiedot</h2>
         <p className="controls__note">
           Edellinen ja Seuraava vaihtavat vain ruudun aiheen. Ääni loppuu vain Lopeta-napista.
-          Hedy ei nauhoita samaan aikaan.
+          Päänauha on Mini Appin MediaRecorder. Telegram-ääni on varatapa. Hedy ei nauhoita samaan
+          aikaan.
         </p>
 
         {pending || recordings.length > 0 ? (
@@ -167,6 +171,24 @@ export function RecordingControls({
           <span>Liitä äänitiedosto (varatapa)</span>
           <input type="file" accept="audio/*" onChange={handleUpload} />
         </label>
+
+        {telegramVoices.length > 0 ? (
+          <section className="recordings" aria-labelledby="telegram-aani-otsikko">
+            <h3 id="telegram-aani-otsikko">Telegram-ääni (varatapa)</h3>
+            <p>
+              Botille lähetetyt ääniviestit. Niitä ei nauhoiteta Mini Appin kanssa yhtä aikaa. Liitä
+              tiedosto yllä, jos haluat ne samaan istuntoon.
+            </p>
+            <ol>
+              {telegramVoices.map((clip) => (
+                <li key={`${clip.fileId}-${clip.at}`}>
+                  Aihe {clip.questionIndex + 1}
+                  {clip.duration != null ? ` · ${clip.duration} s` : ''}
+                </li>
+              ))}
+            </ol>
+          </section>
+        ) : null}
 
         <details className="shortcuts">
           <summary>Pikanäppäimet</summary>
