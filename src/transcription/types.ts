@@ -1,4 +1,4 @@
-import type { Person, SpeakerId, SpeakerSegment } from '../types.ts'
+import type { Person, SessionFact, SpeakerId, SpeakerSegment, TopicTimestamp } from '../types.ts'
 
 export type TranscriptionStatus = 'placeholder' | 'queued' | 'completed' | 'failed'
 
@@ -9,10 +9,16 @@ export interface SpeakerHint {
   birthYear?: number
 }
 
+export interface TranscriptionQuestionCue {
+  id: string
+  question: string
+  theme: string
+  cueOffsetMs?: number
+  personalizedFollowUps?: string[]
+}
+
 export interface TranscriptionRequest {
   interviewId: string
-  questionId: string
-  question: string
   language: 'fi'
   audioBlob?: Blob
   audioBlobRef?: string
@@ -20,6 +26,9 @@ export interface TranscriptionRequest {
   durationMs?: number
   speakers: SpeakerHint[]
   diarization: true
+  topicTimestamps: TopicTimestamp[]
+  facts: SessionFact[]
+  questions: TranscriptionQuestionCue[]
 }
 
 export interface TranscriptionResult {
@@ -33,19 +42,30 @@ export interface TranscriptionResult {
 export interface TranscriptionWebhookPayload {
   event: 'transcription.requested'
   version: '1'
+  provider: 'hedy'
+  mode: 'post-process'
+  liveCapture: false
+  diarizationDraft: true
+  humanReviewRequired: true
   interviewId: string
-  questionId: string
-  question: string
   language: 'fi'
   callbackUrl: string
   audio: {
     blobRef?: string
+    fileRef?: string
     mimeType?: string
     durationMs?: number
     encodingHint: string
+    continuousSession: true
   }
+  topicTimestamps: TopicTimestamp[]
+  speakers: SpeakerHint[]
+  facts: SessionFact[]
+  questions: TranscriptionQuestionCue[]
   diarization: {
     enabled: true
+    diarizationDraft: true
+    humanReviewRequired: true
     minSpeakers: number
     maxSpeakers: number
     knownSpeakers: SpeakerHint[]

@@ -8,6 +8,7 @@ interface TranscriptEditorProps {
   segments: SpeakerSegment[]
   adapterName: string
   adapterMessage?: string
+  recordingLive: boolean
   onNotesChange: (value: string) => void
   onTranscriptChange: (value: string) => void
   onAddSegment: (speaker?: SpeakerId) => void
@@ -23,6 +24,7 @@ export function TranscriptEditor({
   segments,
   adapterName,
   adapterMessage,
+  recordingLive,
   onNotesChange,
   onTranscriptChange,
   onAddSegment,
@@ -32,91 +34,116 @@ export function TranscriptEditor({
   onMergeSegments,
 }: TranscriptEditorProps) {
   return (
-    <section className="editor" aria-labelledby="litterointi-otsikko">
-      <h2 id="litterointi-otsikko">Muistiinpanot ja litterointi</h2>
+    <section className="editor" aria-labelledby="tarina-otsikko">
+      <h2 id="tarina-otsikko">Tämän aiheen muistiinpanot</h2>
       <p className="editor__hint">
-        Puhujat: Vili (haastattelija), Leena, Jorma tai Tuntematon. Adapteri:{' '}
-        <strong>{adapterName}</strong>.
+        Leena ja Jorma juttelevat yhdessä. Kirjoita vapaasti. Teksti tallentuu tälle laitteelle
+        automaattisesti. Äänitys on vapaaehtoinen — muista silti ladata äänitiedosto pois selaimesta.
       </p>
 
       <label className="field">
-        <span>Muistiinpanot</span>
+        <span>Muistiinpanot ja tarina</span>
         <textarea
           value={notes}
           onChange={(event: ChangeEvent<HTMLTextAreaElement>) => onNotesChange(event.target.value)}
-          rows={6}
-          placeholder="Kirjoita tähän Vilin havainnot, nimet, vuodet ja jatkokysymykset…"
+          rows={12}
+          placeholder="Kirjoita tähän Leenan ja Jorman muisto omilla sanoilla…"
         />
       </label>
 
-      <label className="field">
-        <span>Litteraatti (muokattava, aluksi paikkamerkki)</span>
-        <textarea
-          value={transcript}
-          onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
-            onTranscriptChange(event.target.value)
-          }
-          rows={6}
-        />
-      </label>
-
-      <div className="button-row">
-        <button type="button" className="btn" onClick={() => onAddSegment('leena')}>
-          Lisää jakso
-        </button>
-        <button type="button" className="btn" onClick={onMergeSegments}>
-          Yhdistä jaksot litteraatiksi
-        </button>
-        <button type="button" className="btn btn--ghost" onClick={onRequestTranscription}>
-          Valmistele litterointipyyntö
-        </button>
-      </div>
-
-      {adapterMessage ? (
-        <p className="status-line" role="status">
-          {adapterMessage}
+      <details className="extra-tools">
+        <summary>Litterointi ja puhujajaksot (jälkikäsittely)</summary>
+        <p className="editor__hint">
+          Adapteri: <strong>{adapterName}</strong>. Hedy on jälkikäsittely: asennettu Hedy-sovellus
+          ottaa äänitiedoston, ja valmiit litteroinnit palaavat API:sta tai webhookista. Hedya ei
+          tarvita haastattelun aikana, eikä haastattelua nauhoiteta Hedyssä samaan aikaan.
         </p>
-      ) : null}
+        <p className="editor__hint" role="note">
+          Puhujatägit (Vili, Leena, Jorma, Tuntematon) ovat <strong>luonnos</strong>, kunnes Vili
+          tarkistaa ne. Diarisointi ei ole koskaan lopullinen.
+        </p>
 
-      <ol className="segments">
-        {segments.map((segment, index) => (
-          <li key={segment.id} className="segment">
-            <div className="segment__meta">
-              <label>
-                <span className="visually-hidden">Puhuja jaksossa {index + 1}</span>
-                <select
-                  value={segment.speaker}
-                  onChange={(event) =>
-                    onUpdateSegment(segment.id, { speaker: event.target.value as SpeakerId })
-                  }
+        <label className="field">
+          <span>Litteraatti</span>
+          <textarea
+            value={transcript}
+            onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
+              onTranscriptChange(event.target.value)
+            }
+            rows={6}
+          />
+        </label>
+
+        <div className="button-row">
+          <button type="button" className="btn" onClick={() => onAddSegment('unknown')}>
+            Lisää jakso
+          </button>
+          <button type="button" className="btn" onClick={onMergeSegments}>
+            Yhdistä jaksot litteraatiksi
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={onRequestTranscription}
+            disabled={recordingLive}
+          >
+            Valmistele Hedy-pyyntö jälkeenpäin
+          </button>
+        </div>
+
+        {recordingLive ? (
+          <p className="status-line" role="status">
+            Nauhoitus on käynnissä. Hedy-pyyntö tehdään vasta keskustelun jälkeen.
+          </p>
+        ) : null}
+
+        {adapterMessage ? (
+          <p className="status-line" role="status">
+            {adapterMessage}
+          </p>
+        ) : null}
+
+        <ol className="segments">
+          {segments.map((segment, index) => (
+            <li key={segment.id} className="segment">
+              <div className="segment__meta">
+                <label>
+                  <span className="visually-hidden">Puhuja jaksossa {index + 1} (luonnos)</span>
+                  <select
+                    value={segment.speaker}
+                    onChange={(event) =>
+                      onUpdateSegment(segment.id, { speaker: event.target.value as SpeakerId })
+                    }
+                  >
+                    {SPEAKER_IDS.map((id) => (
+                      <option key={id} value={id}>
+                        {SPEAKER_LABELS[id]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <span className="segment__draft">luonnos · Vili tarkistaa</span>
+                <button
+                  type="button"
+                  className="btn btn--tiny"
+                  onClick={() => onRemoveSegment(segment.id)}
                 >
-                  {SPEAKER_IDS.map((id) => (
-                    <option key={id} value={id}>
-                      {SPEAKER_LABELS[id]}
-                    </option>
-                  ))}
-                </select>
+                  Poista jakso
+                </button>
+              </div>
+              <label className="field">
+                <span className="visually-hidden">Teksti, {SPEAKER_LABELS[segment.speaker]}</span>
+                <textarea
+                  value={segment.text}
+                  onChange={(event) => onUpdateSegment(segment.id, { text: event.target.value })}
+                  rows={3}
+                  placeholder="Puhujan sanat…"
+                />
               </label>
-              <button
-                type="button"
-                className="btn btn--tiny"
-                onClick={() => onRemoveSegment(segment.id)}
-              >
-                Poista jakso
-              </button>
-            </div>
-            <label className="field">
-              <span className="visually-hidden">Teksti, {SPEAKER_LABELS[segment.speaker]}</span>
-              <textarea
-                value={segment.text}
-                onChange={(event) => onUpdateSegment(segment.id, { text: event.target.value })}
-                rows={3}
-                placeholder="Puhujan sanat…"
-              />
-            </label>
-          </li>
-        ))}
-      </ol>
+            </li>
+          ))}
+        </ol>
+      </details>
     </section>
   )
 }

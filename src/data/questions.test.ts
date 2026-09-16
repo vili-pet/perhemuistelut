@@ -1,38 +1,26 @@
 import { describe, expect, it } from 'vitest'
-import { getQuestionById, QUESTIONS } from './questions.ts'
-
-const THEMES = [
-  'Lapsuus',
-  'Koti',
-  'Perheen perinteet',
-  'Työ',
-  'Rakkaus ja perhe',
-  'Vaikeat ajat',
-  'Paikat',
-  'Teknologia ja muutos',
-  'Neuvo',
-  'Viesti tuleville sukupolville',
-]
+import { EXACT_PROMPTS, getQuestionById, QUESTIONS, REQUIRED_THEMES } from './questions.ts'
 
 describe('QUESTIONS', () => {
-  it('sisältää kymmenen kohdennettua kysymystä', () => {
+  it('sisältää tasan kymmenen kehotetta kysymykset.md:stä', () => {
     expect(QUESTIONS).toHaveLength(10)
+    expect(QUESTIONS.map((question) => question.question)).toEqual([...EXACT_PROMPTS])
   })
 
-  it('kattaa kaikki pyydetyt teemat', () => {
-    expect(QUESTIONS.map((question) => question.theme)).toEqual(THEMES)
+  it('kattaa kaikki kymmenen teemaa', () => {
+    expect(new Set(QUESTIONS.map((question) => question.themeId))).toEqual(new Set(REQUIRED_THEMES))
   })
 
-  it('jokaisella kysymyksellä on tukikysymyksiä ja jatko-ohjeita', () => {
+  it('jokaisella aiheella on vähintään kolme jatkoa', () => {
     for (const question of QUESTIONS) {
       expect(question.question.length).toBeGreaterThan(20)
-      expect(question.prompts.length).toBeGreaterThanOrEqual(3)
       expect(question.followUps.length).toBeGreaterThanOrEqual(3)
+      expect(question.label.length).toBeGreaterThan(0)
     }
   })
 
   it('löytää kysymyksen tunnisteella', () => {
-    expect(getQuestionById('lapsuus')?.theme).toBe('Lapsuus')
+    expect(getQuestionById('eka-telkkari')?.themeId).toBe('teknologia')
     expect(getQuestionById('puuttuu')).toBeUndefined()
   })
 })

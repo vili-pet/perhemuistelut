@@ -1,25 +1,55 @@
 interface ExportPanelProps {
   interviewId: string
   updatedAt: string
-  onExport: () => void
+  respondentNames: string
+  factCount: number
+  canDownloadAudio: boolean
+  onExportText: () => void
+  onExportJson: () => void
+  onDownloadAudio: () => void
 }
 
-export function ExportPanel({ interviewId, updatedAt, onExport }: ExportPanelProps) {
+export function ExportPanel({
+  interviewId,
+  updatedAt,
+  respondentNames,
+  factCount,
+  canDownloadAudio,
+  onExportText,
+  onExportJson,
+  onDownloadAudio,
+}: ExportPanelProps) {
   return (
     <section className="export" aria-labelledby="vienti-otsikko">
-      <h2 id="vienti-otsikko">Perhehistorian vienti</h2>
+      <h2 id="vienti-otsikko">Tallennus ja kopio</h2>
+      <p className="status-line" role="status">
+        {respondentNames} tarinat ovat tällä laitteella. Selainkopio (localStorage / IndexedDB) ei
+        yksin riitä. Viimeksi {updatedAt}.
+      </p>
       <p>
-        Tallennus tapahtuu tällä laitteella (<code>localStorage</code> + ääniviitteet). Vie
-        jäsennelty JSON sukutarinaa varten.
+        Jokaisen keskustelun päätteeksi tallenna äänitiedosto koneelle tai puhelimeen. Vie se
+        myöhemmin Hedyyn. JSON sisältää aihemerkit, faktapankin ({factCount} faktaa),
+        henkilökohtaiset tukikysymykset ja äänimetatiedot, mutta ei äänibittiä.
       </p>
       <p className="export__meta">
         Istunto <code>{interviewId}</code>
-        <br />
-        Päivitetty {updatedAt}
       </p>
-      <button type="button" className="btn btn--save" onClick={onExport}>
-        Lataa perhehistoria-JSON
-      </button>
+      <div className="button-row">
+        <button
+          type="button"
+          className="btn btn--save"
+          onClick={onDownloadAudio}
+          disabled={!canDownloadAudio}
+        >
+          Tallenna äänitiedosto koneelle/puhelimeen
+        </button>
+        <button type="button" className="btn btn--save" onClick={onExportText}>
+          Lataa tarinat tekstinä
+        </button>
+        <button type="button" className="btn" onClick={onExportJson}>
+          Lataa JSON
+        </button>
+      </div>
     </section>
   )
 }

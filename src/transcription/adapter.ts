@@ -1,6 +1,6 @@
 import { createId } from '../lib/id.ts'
 import { EMPTY_TRANSCRIPT_PLACEHOLDER } from '../storage/interviewStorage.ts'
-import { buildWebhookPayload } from './payload.ts'
+import { buildWebhookPayload, hedyCallbackUrl, hedyEndpoint } from './payload.ts'
 import type {
   TranscriptionAdapter,
   TranscriptionRequest,
@@ -9,7 +9,7 @@ import type {
 } from './types.ts'
 
 export class PlaceholderTranscriptionAdapter implements TranscriptionAdapter {
-  readonly name = 'placeholder'
+  readonly name = 'hedy-placeholder'
 
   async transcribe(_request: TranscriptionRequest): Promise<TranscriptionResult> {
     return {
@@ -18,7 +18,11 @@ export class PlaceholderTranscriptionAdapter implements TranscriptionAdapter {
       segments: [],
       provider: this.name,
       message:
-        'Litterointiputki on valmis kytkettäväksi. Tämä adapteri ei lähetä ääntä minnekään — kirjoita jaksot käsin tai määritä webhook.',
+        'Hedy on jälkikäsittely, ei live-kaappaus. Tämä paikka-adapteri ei lähetä ääntä minnekään ' +
+        'eikä kutsu Hedya haastattelun aikana. Tallenna äänitiedosto koneelle, avaa se asennetussa ' +
+        'Hedy-sovelluksessa myöhemmin, ja palauta litterointi API:lla tai webhookilla. ' +
+        'Puhujatägit (Vili / Leena / Jorma / Tuntematon) ovat luonnos, kunnes Vili tarkistaa ne. ' +
+        'Aseta VITE_HEDY_WEBHOOK_URL tai VITE_HEDY_API_URL, jos haluat jonottaa pyynnön jälkeenpäin.',
     }
   }
 
@@ -28,7 +32,7 @@ export class PlaceholderTranscriptionAdapter implements TranscriptionAdapter {
 }
 
 export class WebhookTranscriptionAdapter implements TranscriptionAdapter {
-  readonly name = 'webhook'
+  readonly name = 'hedy'
   private readonly endpoint: string
   private readonly callbackUrl?: string
 
@@ -42,7 +46,7 @@ export class WebhookTranscriptionAdapter implements TranscriptionAdapter {
     const body = new FormData()
     body.set('payload', JSON.stringify(payload))
     if (request.audioBlob) {
-      body.set('audio', request.audioBlob, `${request.questionId}.audio`)
+      body.set('audio', request.audioBlob, `${request.interviewId}.audio`)
     }
 
     try {
@@ -56,7 +60,7 @@ export class WebhookTranscriptionAdapter implements TranscriptionAdapter {
           transcript: EMPTY_TRANSCRIPT_PLACEHOLDER,
           segments: [],
           provider: this.name,
-          message: `Webhook vastasi tilalla ${response.status}.`,
+          message: `Hedy-webhook vastasi tilalla ${response.status}. Litterointi jää luonnokseksi, kunnes Vili tarkistaa.`,
         }
       }
       return {
@@ -66,11 +70,15 @@ export class WebhookTranscriptionAdapter implements TranscriptionAdapter {
           {
             id: createId('jakso'),
             speaker: 'unknown',
-            text: 'Litterointi jonossa ulkoisessa putkessa.',
+            text:
+              'Litterointi jonossa Hedyssä (jälkikäsittely). Puhujat luonnoksena: Vili / Leena / Jorma / Tuntematon. Vili tarkistaa tägit.',
           },
         ],
         provider: this.name,
-        message: 'Pyyntö lähetettiin litterointiputkeen. Puhujien erottelu (Vili / Leena / Jorma / Tuntematon) on mukana payloadissa.',
+        message:
+          'Pyyntö jonotettiin Hedyyn jälkeenpäin. Mukana on äänimetatieto, blob/file-viite, aihemerkit ja ' +
+          'puhujaluonnos (Vili / Leena / Jorma / Tuntematon). Diarisointi ei ole lopullinen — Vili tarkistaa tägit. ' +
+          'Haastattelun aikana ei ole live-kutsua eikä tuplanauhoitusta.',
       }
     } catch {
       return {
@@ -78,7 +86,9 @@ export class WebhookTranscriptionAdapter implements TranscriptionAdapter {
         transcript: EMPTY_TRANSCRIPT_PLACEHOLDER,
         segments: [],
         provider: this.name,
-        message: 'Webhook-kutsu epäonnistui. Tarkista VITE_TRANSCRIPTION_WEBHOOK_URL.',
+        message:
+          'Hedy-kutsu epäonnistui. Tarkista VITE_HEDY_WEBHOOK_URL / VITE_HEDY_API_URL. ' +
+          'Ääntä ei lähetetty haastattelun aikana.',
       }
     }
   }
@@ -89,8 +99,8 @@ export class WebhookTranscriptionAdapter implements TranscriptionAdapter {
 }
 
 export function createTranscriptionAdapter(): TranscriptionAdapter {
-  const endpoint = import.meta.env.VITE_TRANSCRIPTION_WEBHOOK_URL as string | undefined
-  const callback = import.meta.env.VITE_TRANSCRIPTION_CALLBACK_URL as string | undefined
+  const endpoint = hedyEndpoint()
+  const callback = hedyCallbackUrl()
   if (endpoint) {
     return new WebhookTranscriptionAdapter(endpoint, callback)
   }

@@ -1,8 +1,10 @@
 import type { ChangeEvent } from 'react'
+import { QUESTIONS } from '../data/questions.ts'
 import { formatDuration } from '../lib/format.ts'
 import type { RecorderSupport } from '../recording/mediaRecorder.ts'
-import type { AudioRecordingMeta } from '../types.ts'
+import type { AudioRecordingMeta, TopicTimestamp } from '../types.ts'
 import type { RecorderUiState } from '../hooks/useRecorder.ts'
+import type { TelegramVoiceClip } from '../telegram/useBotSync.ts'
 
 interface RecordingControlsProps {
   support: RecorderSupport
@@ -11,16 +13,20 @@ interface RecordingControlsProps {
   errorMessage: string | null
   canPause: boolean
   recordings: AudioRecordingMeta[]
+  topicTimestamps: TopicTimestamp[]
   playbackUrls: Record<string, string>
   onRecord: () => void
   onPause: () => void
-  onStopSave: () => void
+  onStop: () => void
+  onDownloadSession: () => void
+  onDownloadTape: (recordingId: string) => void
   onNext: () => void
   onPrevious: () => void
   onRestart: () => void
   onUpload: (file: File) => void
   isFirst: boolean
   isLast: boolean
+  telegramVoices?: TelegramVoiceClip[]
 }
 
 function statusText(uiState: RecorderUiState, support: RecorderSupport): string {
@@ -30,11 +36,14 @@ function statusText(uiState: RecorderUiState, support: RecorderSupport): string 
   if (support === 'insecure-context') {
     return 'Nauhoitus vaatii localhostin tai HTTPS-yhteyden. Voit silti liittää tiedoston.'
   }
-  if (uiState === 'recording') return 'Nauhoitus käynnissä'
-  if (uiState === 'paused') return 'Nauhoitus tauolla'
+  if (uiState === 'recording') return 'Nauhoitus käynnissä. Aiheen vaihto ei katkaise ääntä.'
+  if (uiState === 'paused') return 'Nauhoitus tauolla. Kello ja nauha jatkuvat kun jatkat.'
+  if (uiState === 'pending') {
+    return 'Nauhoitus lopetettu. Tallenna äänitiedosto koneelle tai puhelimeen — selaimen kopio ei yksin riitä.'
+  }
   if (uiState === 'saving') return 'Tallennetaan nauhoitusta'
   if (uiState === 'error') return 'Nauhoituksessa tapahtui virhe'
-  return 'Valmis nauhoittamaan'
+  return 'Valmis nauhoittamaan. Yksi nauha voi kattaa koko haastattelun.'
 }
 
 export function RecordingControls({
@@ -44,21 +53,27 @@ export function RecordingControls({
   errorMessage,
   canPause,
   recordings,
+  topicTimestamps,
   playbackUrls,
   onRecord,
   onPause,
-  onStopSave,
+  onStop,
+  onDownloadSession,
+  onDownloadTape,
   onNext,
   onPrevious,
   onRestart,
   onUpload,
   isFirst,
   isLast,
+  telegramVoices = [],
 }: RecordingControlsProps) {
   const recording = uiState === 'recording'
   const paused = uiState === 'paused'
-  const busy = recording || paused || uiState === 'saving'
+  const pending = uiState === 'pending'
+  const live = recording || paused
   const supported = support === 'supported'
+  const canDownloadSession = pending || recordings.length > 0
 
   const handleUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -67,94 +82,171 @@ export function RecordingControls({
   }
 
   return (
-    <section className="controls" aria-labelledby="nauhoitus-otsikko">
-      <div className="controls__head">
-        <h2 id="nauhoitus-otsikko">Nauhoitus ja siirtymät</h2>
-        <p className="timer" aria-live="polite">
-          {formatDuration(elapsedMs)}
+    <>
+      <section className="recording-dock" aria-labelledby="nauhoitus-otsikko">
+        <div className="recording-dock__head">
+          <h2 id="nauhoitus-otsikko">Nauhoitus</h2>
+          <p className="timer" aria-live="polite">
+            {formatDuration(elapsedMs)}
+          </p>
+        </div>
+        <p className="recording-dock__status" role="status" aria-live="polite">
+          {statusText(uiState, support)}
+          {errorMessage ? ` ${errorMessage}` : ''}
         </p>
-      </div>
-
-      <p className="status-line" role="status" aria-live="polite">
-        {statusText(uiState, support)}
-        {errorMessage ? ` ${errorMessage}` : ''}
-      </p>
-
-      <div className="button-row" role="group" aria-label="Nauhoituksen ohjaus">
-        <button
-          type="button"
-          className="btn btn--record"
-          onClick={onRecord}
-          disabled={!supported || busy}
-        >
-          Nauhoita
-        </button>
-        <button
-          type="button"
-          className="btn"
-          onClick={onPause}
-          disabled={!supported || !canPause || (!recording && !paused)}
-        >
-          {paused ? 'Jatka' : 'Tauko'}
-        </button>
-        <button
-          type="button"
-          className="btn btn--save"
-          onClick={onStopSave}
-          disabled={!supported || (!recording && !paused)}
-        >
-          Lopeta ja tallenna
-        </button>
-      </div>
-
-      <div className="button-row" role="group" aria-label="Kysymysten ohjaus">
-        <button type="button" className="btn" onClick={onPrevious} disabled={isFirst}>
-          Edellinen
-        </button>
-        <button type="button" className="btn" onClick={onNext} disabled={isLast}>
-          Seuraava
-        </button>
-        <button type="button" className="btn btn--ghost" onClick={onRestart}>
-          Aloita alusta
-        </button>
-      </div>
-
-      <label className="upload">
-        <span>Liitä äänitiedosto (varatapa)</span>
-        <input type="file" accept="audio/*" onChange={handleUpload} />
-      </label>
-
-      <p className="shortcuts">
-        Pikanäppäimet: <kbd>R</kbd> nauhoita, <kbd>P</kbd> tauko, <kbd>S</kbd> tallenna,{' '}
-        <kbd>←</kbd>/<kbd>B</kbd> edellinen, <kbd>→</kbd>/<kbd>N</kbd> seuraava, <kbd>Alt</kbd>+
-        <kbd>K</kbd> alusta. Tekstikentässä käytä Alt-yhdistelmää.
-      </p>
-
-      <section className="recordings" aria-labelledby="nauhahistoria-otsikko">
-        <h3 id="nauhahistoria-otsikko">Tämän kysymyksen nauhat</h3>
-        {recordings.length === 0 ? (
-          <p>Ei vielä nauhoituksia.</p>
-        ) : (
-          <ul>
-            {recordings.map((item, index) => (
-              <li key={item.id}>
-                <p>
-                  Nauha {index + 1} · {item.mimeType || 'ääni'} ·{' '}
-                  {item.durationMs != null ? formatDuration(item.durationMs) : 'kesto tuntematon'} ·{' '}
-                  {item.source === 'file-upload' ? 'liitetty tiedosto' : 'MediaRecorder'}
-                </p>
-                {playbackUrls[item.id] ? (
-                  <audio controls src={playbackUrls[item.id]} preload="metadata">
-                    Selaimesi ei toista ääntä.
-                  </audio>
-                ) : (
-                  <p>Äänitiedostoa ei voitu avata tästä laitteesta.</p>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
+        <div className="recording-dock__record" role="group" aria-label="Nauhoituksen ohjaus">
+          <button
+            type="button"
+            className="btn btn--record"
+            onClick={onRecord}
+            disabled={!supported || live || uiState === 'saving'}
+          >
+            Nauhoita
+          </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={onPause}
+            disabled={!supported || !canPause || (!recording && !paused)}
+          >
+            {paused ? 'Jatka' : 'Tauko'}
+          </button>
+          <button type="button" className="btn" onClick={onStop} disabled={!supported || !live}>
+            Lopeta
+          </button>
+          <button
+            type="button"
+            className="btn btn--save"
+            onClick={onDownloadSession}
+            disabled={!canDownloadSession || uiState === 'saving'}
+          >
+            Tallenna äänitiedosto
+          </button>
+        </div>
+        <div className="recording-dock__nav" role="group" aria-label="Aiheiden ohjaus">
+          <button type="button" className="btn" onClick={onPrevious} disabled={isFirst}>
+            Edellinen
+          </button>
+          <button type="button" className="btn" onClick={onNext} disabled={isLast}>
+            Seuraava
+          </button>
+        </div>
       </section>
-    </section>
+
+      <section className="controls" aria-labelledby="nauha-lisat-otsikko">
+        <h2 id="nauha-lisat-otsikko">Nauhan tiedot</h2>
+        <p className="controls__note">
+          Edellinen ja Seuraava vaihtavat vain ruudun aiheen. Ääni loppuu vain Lopeta-napista.
+          Päänauha on selaimen MediaRecorder. Hedy ei nauhoita samaan aikaan.
+        </p>
+
+        {pending || recordings.length > 0 ? (
+          <div className="audio-save" role="region" aria-labelledby="aanitiedosto-otsikko">
+            <h3 id="aanitiedosto-otsikko">Tallenna äänitiedosto koneelle tai puhelimeen</h3>
+            <p>
+              Selain voi pitää kopion IndexedDB:ssä, mutta se ei yksin riitä. Lataa äänitiedosto
+              pois selaimesta jokaisen keskustelun päätteeksi. Vie se myöhemmin Hedyyn — ei live-nauhoitusta.
+            </p>
+            <div className="button-row">
+              <button
+                type="button"
+                className="btn btn--save"
+                onClick={onDownloadSession}
+                disabled={!canDownloadSession}
+              >
+                Tallenna äänitiedosto koneelle/puhelimeen
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="button-row">
+          <button type="button" className="btn btn--ghost" onClick={onRestart}>
+            Aloita alusta
+          </button>
+        </div>
+
+        <label className="upload">
+          <span>Liitä äänitiedosto (varatapa)</span>
+          <input type="file" accept="audio/*" onChange={handleUpload} />
+        </label>
+
+        {telegramVoices.length > 0 ? (
+          <section className="recordings" aria-labelledby="telegram-aani-otsikko">
+            <h3 id="telegram-aani-otsikko">Telegram-ääni (varatapa)</h3>
+            <p>
+              Botille lähetetyt ääniviestit. Niitä ei nauhoiteta Mini Appin kanssa yhtä aikaa. Liitä
+              tiedosto yllä, jos haluat ne samaan istuntoon.
+            </p>
+            <ol>
+              {telegramVoices.map((clip) => (
+                <li key={`${clip.fileId}-${clip.at}`}>
+                  Aihe {clip.questionIndex + 1}
+                  {clip.duration != null ? ` · ${clip.duration} s` : ''}
+                </li>
+              ))}
+            </ol>
+          </section>
+        ) : null}
+
+        <details className="shortcuts">
+          <summary>Pikanäppäimet</summary>
+          <p>
+            <kbd>R</kbd> nauhoita, <kbd>P</kbd> tauko, <kbd>E</kbd> lopeta, <kbd>S</kbd> tallenna
+            äänitiedosto, <kbd>←</kbd>/<kbd>B</kbd> edellinen, <kbd>→</kbd>/<kbd>N</kbd> seuraava,{' '}
+            <kbd>Alt</kbd>+<kbd>K</kbd> alusta. Tekstikentässä käytä Alt-yhdistelmää.
+          </p>
+        </details>
+
+        <section className="recordings" aria-labelledby="aihemerkit-otsikko">
+          <h3 id="aihemerkit-otsikko">Aihemerkit tällä nauhalla</h3>
+          {topicTimestamps.length === 0 ? (
+            <p>Ei vielä aihemerkkejä. Merkki syntyy, kun vaihdat aihetta nauhoituksen aikana.</p>
+          ) : (
+            <ol>
+              {topicTimestamps.map((stamp) => (
+                <li key={stamp.id}>
+                  {formatDuration(stamp.offsetMs)} · nauha {stamp.tapeIndex + 1} ·{' '}
+                  {QUESTIONS[stamp.questionIndex]?.label ?? stamp.questionId}
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+
+        <section className="recordings" aria-labelledby="nauhahistoria-otsikko">
+          <h3 id="nauhahistoria-otsikko">Istunnon nauhat</h3>
+          {recordings.length === 0 ? (
+            <p>Ei vielä nauhoituksia. Yksi nauha voi sisältää koko kymmenen aiheen setin.</p>
+          ) : (
+            <ul>
+              {recordings.map((item, index) => (
+                <li key={item.id} className="recordings__item">
+                  <p>
+                    Nauha {index + 1} · {item.mimeType || 'ääni'} ·{' '}
+                    {item.durationMs != null ? formatDuration(item.durationMs) : 'kesto tuntematon'}{' '}
+                    · {item.source === 'file-upload' ? 'liitetty tiedosto' : 'MediaRecorder'}
+                  </p>
+                  {playbackUrls[item.id] ? (
+                    <audio controls src={playbackUrls[item.id]} preload="metadata">
+                      Selaimesi ei toista ääntä.
+                    </audio>
+                  ) : (
+                    <p>Äänitiedostoa ei voitu avata tästä selaimesta. Lataa se, jos se on tällä laitteella.</p>
+                  )}
+                  <button
+                    type="button"
+                    className="btn btn--save"
+                    onClick={() => onDownloadTape(item.id)}
+                  >
+                    Tallenna äänitiedosto koneelle/puhelimeen
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </section>
+    </>
   )
 }
